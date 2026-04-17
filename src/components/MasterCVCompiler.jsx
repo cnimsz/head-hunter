@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { compileMasterCV, extractCVsFromZip, MAX_CVS } from '../lib/compileMasterCV.js';
-import { getApiKey, saveMasterCV } from '../lib/storage.js';
+import { saveMasterCV } from '../lib/storage.js';
 
 export default function MasterCVCompiler({ onClose, onCompiled }) {
   const [zipFile, setZipFile] = useState(null);
@@ -11,11 +11,6 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
 
   async function handleCompile() {
     setError(null);
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      setError('Add your Anthropic API key in Settings first.');
-      return;
-    }
     if (!zipFile) {
       setError('Choose a .zip file first.');
       return;
@@ -25,7 +20,7 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
       const cvs = await extractCVsFromZip(zipFile, setProgress);
       setStatus('compiling');
       setProgress({ filename: `Synthesising master CV from ${cvs.length} CV(s)…` });
-      const masterText = await compileMasterCV({ apiKey, cvs });
+      const masterText = await compileMasterCV({ cvs });
       const filename = `Master CV (${cvs.length} sources).md`;
       saveMasterCV(masterText, filename);
       setResult({ text: masterText, count: cvs.length, filename });

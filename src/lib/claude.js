@@ -5,18 +5,14 @@ import { formatLearningsBlock } from './learnings.js';
 
 const MODEL = 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 8000;
+const EDGE_FN_URL = 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude';
 
-async function callClaude({ apiKey, prompt }) {
+async function callClaude({ prompt }) {
   let res;
   try {
-    res = await fetch('https://api.anthropic.com/v1/messages', {
+    res = await fetch(EDGE_FN_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
@@ -29,7 +25,6 @@ async function callClaude({ apiKey, prompt }) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('Invalid API key. Check it in Settings.');
     if (res.status === 429) throw new Error('Rate limited by Anthropic. Wait and retry.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
@@ -112,7 +107,6 @@ function cvDataToText(d) {
 }
 
 export async function generateApplication({
-  apiKey,
   jobDescription,
   cvText,
   companyName,
@@ -120,7 +114,6 @@ export async function generateApplication({
 }) {
   onStep('cv');
   const cvRaw = await callClaude({
-    apiKey,
     prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') })
   });
   const cvData = extractJson(cvRaw);
@@ -128,7 +121,6 @@ export async function generateApplication({
 
   onStep('research');
   const researchRaw = await callClaude({
-    apiKey,
     prompt: buildJobResearchPrompt({
       jobDescription,
       companyName,
@@ -144,7 +136,6 @@ export async function generateApplication({
 
   onStep('coverLetter');
   const clRaw = await callClaude({
-    apiKey,
     prompt: buildCoverLetterPrompt({
       jobDescription,
       tailoredCV: cv,

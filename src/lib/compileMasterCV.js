@@ -65,17 +65,14 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
   return cvs;
 }
 
-export async function compileMasterCV({ apiKey, cvs }) {
+const EDGE_FN_URL = 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude';
+
+export async function compileMasterCV({ cvs }) {
   const prompt = buildMasterCVPrompt({ cvs });
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
@@ -85,7 +82,6 @@ export async function compileMasterCV({ apiKey, cvs }) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('Invalid API key. Check it in Settings.');
     if (res.status === 429) throw new Error('Rate limited by Anthropic. Wait and retry.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }

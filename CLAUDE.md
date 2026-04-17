@@ -1,249 +1,194 @@
-# CV Toolkit App
+# CV Toolkit App (Head Hunter)
 
 One-screen web app: Paste job description → Get tailored CV, cover letter, and LinkedIn message.
+All processing runs client-side in the browser — no backend.
 
 ## Tech Stack
 
-- **Framework:** React 18 + Vite
-- **Styling:** Tailwind CSS
-- **Document generation:** `docx` npm package
-- **API:** Anthropic Messages API (user provides key)
-- **Storage:** localStorage
+- **Framework:** React 18 + Vite 5
+- **Styling:** Tailwind CSS 3 (dark mode via class toggle)
+- **Document generation:** `docx` + `file-saver`
+- **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
+- **API:** Anthropic Messages API — claude-sonnet-4-20250514, proxied via Supabase Edge Function (`head-hunter-claude`)
+- **Supabase:** Project ref `jxsjgwrkymhtnkwhwtoz` — edge function uses `HEAD_HUNTER` secret for the Anthropic API key
+- **Storage:** localStorage (prefix: `cv-toolkit:`)
 - **Deploy:** Vercel
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        APP SHELL (M1)                          │
-│  Layout, theme, responsive container                           │
+│                        APP SHELL                                │
+│  App.jsx — layout, theme, state orchestration                   │
 └─────────────────────────────────────────────────────────────────┘
          │              │              │              │
          ▼              ▼              ▼              ▼
 ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
 │   INPUT     │ │   CLAUDE    │ │   OUTPUT    │ │   STORAGE   │
 │   PANEL     │ │   ENGINE    │ │   PANEL     │ │   LAYER     │
-│    (M2)     │ │    (M3)     │ │    (M4)     │ │    (M5)     │
+│             │ │ claude.js   │ │ + Editable  │ │ storage.js  │
+│             │ │ + prompts/  │ │ + Feedback  │ │ learnings.js│
 └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
-                                                      │
-                                               ┌──────┴──────┐
-                                               │   DOCX GEN  │
-                                               │    (M6)     │
-                                               └─────────────┘
+       │                                │              │
+┌──────┴──────┐                  ┌──────┴──────┐ ┌────┴────────┐
+│  CV Parser  │                  │  DOCX Gen   │ │ Master CV   │
+│ cvParser.js │                  │  docx.js    │ │ Compiler    │
+└─────────────┘                  └─────────────┘ └─────────────┘
 ```
 
 ## File Structure
 
 ```
-cv-toolkit-app/
-├── CLAUDE.md              ← You are here
+head-hunter/
+├── CLAUDE.md
 ├── index.html
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
+├── postcss.config.js
 ├── src/
-│   ├── App.jsx              ← M1: Shell
-│   ├── index.css
+│   ├── main.jsx                        ← Entry point
+│   ├── App.jsx                         ← Shell, theme, state orchestration
+│   ├── index.css                       ← Tailwind directives
 │   ├── components/
-│   │   ├── InputPanel.jsx   ← M2: Input
-│   │   ├── OutputPanel.jsx  ← M4: Output
-│   │   └── SettingsModal.jsx
+│   │   ├── InputPanel.jsx              ← Job description + CV upload form
+│   │   ├── OutputPanel.jsx             ← Tabbed results (CV/CL/LinkedIn) + display components
+│   │   ├── EditableCV.jsx              ← Structured CV editing form
+│   │   ├── EditableCoverLetter.jsx     ← Structured cover letter editing form
+│   │   ├── FeedbackModal.jsx           ← Upload revised docs → extract style rules
+│   │   ├── MasterCVCompiler.jsx        ← Upload .zip of CVs → synthesize master CV
+│   │   └── SettingsModal.jsx           ← Saved CV management
 │   ├── lib/
-│   │   ├── claude.js        ← M3: Engine
-│   │   ├── storage.js       ← M5: Storage
-│   │   └── docx.js          ← M6: Doc gen
+│   │   ├── claude.js                   ← API calls, generation pipeline, JSON extraction
+│   │   ├── cvParser.js                 ← PDF/DOCX/TXT text extraction (client-side)
+│   │   ├── docx.js                     ← Structured data → formatted .docx download
+│   │   ├── storage.js                  ← localStorage wrapper (CV, theme)
+│   │   ├── learnings.js                ← Learned style rules persistence
+│   │   ├── feedback.js                 ← Diff analysis via Claude
+│   │   └── compileMasterCV.js          ← ZIP extraction + master CV synthesis
 │   └── prompts/
-│       ├── cv-writer.js
-│       ├── job-research.js
-│       └── cover-letter.js
+│       ├── cv-writer.js                ← CV tailoring prompt (→ structured JSON)
+│       ├── job-research.js             ← Company research + hiring manager + LinkedIn msg
+│       ├── cover-letter.js             ← Cover letter prompt (→ structured JSON)
+│       ├── master-cv.js                ← Multi-CV synthesis prompt
+│       └── feedback.js                 ← Diff analysis → style rules prompt
+├── skills/                             ← Reference skill docs (not used at runtime)
+│   ├── CV_FORMAT_SPEC.md
+│   ├── COVER_LETTER_FORMAT_SPEC.md
+│   ├── cv-writer/SKILL.md
+│   ├── cover-letter-writer/SKILL.md
+│   └── job-description-research/SKILL.md
 └── public/
     └── favicon.svg
 ```
 
-## Module Status
+## Generation Pipeline
 
-| Module | Status | Owner | Notes |
-|--------|--------|-------|-------|
-| M1: App Shell | NOT STARTED | — | No dependencies |
-| M2: Input Panel | NOT STARTED | — | No dependencies |
-| M3: Claude Engine | NOT STARTED | — | No dependencies |
-| M4: Output Panel | NOT STARTED | — | No dependencies |
-| M5: Storage Layer | NOT STARTED | — | No dependencies |
-| M6: Docx Generator | NOT STARTED | — | No dependencies |
-| Integration | BLOCKED | — | Needs M1-M6 |
-| Deploy | BLOCKED | — | Needs integration |
+Three sequential Claude API calls per generation:
 
-## Module Specs
+1. **CV Writer** — `jobDescription` + `masterCV` → structured `cvData` JSON
+2. **Job Research** — `jobDescription` + `companyName` + CV highlights → `hiringManager`, `companyBrief`, `linkedInMessage`
+3. **Cover Letter** — `jobDescription` + `tailoredCV` + `hiringManager` + `companyBrief` → structured `clData` JSON
 
-### M1: App Shell
+Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLetter'` → `'done'`
 
-**File:** `src/App.jsx` + `src/index.css`
+## Structured Data Formats
 
-- Two-column layout (input left, output right)
-- Collapses to single column on mobile (breakpoint: 768px)
-- Dark/light mode toggle (persist preference)
-- Header: app name + settings gear icon
-- Settings modal for API key entry
-- Tailwind only, no custom CSS
-
-### M2: Input Panel
-
-**File:** `src/components/InputPanel.jsx`
-
-**UI Elements:**
-- Job Description textarea (required, placeholder with example)
-- Master CV: file upload (PDF/DOCX) OR "Use saved CV" toggle if one exists
-- Company Name text field (optional, helps research step)
-- Generate button (disabled until JD provided)
-- Loading state with step indicator ("Creating CV...", "Researching company...", "Writing cover letter...")
-
-**State:**
+### CV Data (cvData)
 ```js
 {
-  jobDescription: string,
-  cvFile: File | null,
-  useSavedCV: boolean,
-  companyName: string,
-  isGenerating: boolean,
-  currentStep: 'idle' | 'cv' | 'research' | 'coverLetter' | 'done'
+  name: string,
+  contact: string,
+  summary: string,
+  experience: [{ company: string, titleLine: string, bullets: string[] }],
+  education: string[],
+  skills: string[]          // format: "Category: keyword, keyword, …"
 }
 ```
 
-### M3: Claude Engine
-
-**File:** `src/lib/claude.js`
-
-**Main function:**
+### Cover Letter Data (clData)
 ```js
-async function generateApplication({ 
-  apiKey, 
-  jobDescription, 
-  cvText, 
-  companyName 
-}) → {
-  cv: string,
-  coverLetter: string,
-  linkedInMessage: string,
-  hiringManager: string | null,
-  companyBrief: string
+{
+  senderName: string,
+  senderContact: string,    // hardcoded: "Berlin, Germany | +49 176 7794 4244 | CNimsz@gmail.com"
+  date: string,
+  recipient: { name, title, company, location },
+  salutation: string,
+  openingParagraph: string,
+  bullets: string[],        // exactly 3
+  closingParagraph: string,
+  signatureName: string
 }
 ```
 
-**Flow:**
-1. Call CV Writer prompt → get tailored CV
-2. Call Job Research prompt → get company brief + hiring manager + LinkedIn message
-3. Call Cover Letter prompt (with CV + research context) → get cover letter
-4. Return structured object
-
-**API call pattern:**
+### Job Research Output
 ```js
-const response = await fetch('https://api.anthropic.com/v1/messages', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-api-key': apiKey,
-    'anthropic-version': '2023-06-01',
-    'anthropic-dangerous-direct-browser-access': 'true'
-  },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
-    messages: [{ role: 'user', content: prompt }]
-  })
-});
+{
+  companyBrief: string,     // 12 lines max
+  hiringManager: { name, title, confidence: 'high'|'medium'|'low', rationale },
+  linkedInMessage: string,  // <300 characters
+  linkedInCharCount: number
+}
 ```
 
-**Error handling:** Throw with descriptive messages for: invalid API key, rate limit, network error, malformed response.
+## Key Patterns
 
-### M4: Output Panel
+**Browser-only execution:** All file parsing (PDF via pdfjs, DOCX via mammoth, ZIP via jszip) runs client-side. Claude API calls are proxied through a Supabase Edge Function (`head-hunter-claude`) that holds the Anthropic API key as a secret — no key is stored or exposed client-side.
 
-**File:** `src/components/OutputPanel.jsx`
+**Structured output → editable forms → DOCX:** Claude returns JSON matching the schemas above. OutputPanel renders it as formatted display. Users can switch to edit mode (EditableCV / EditableCoverLetter) to modify structured fields. DOCX generation takes the structured data directly — no markdown→docx conversion needed.
 
-**UI Elements:**
-- Tabs: CV | Cover Letter | LinkedIn
-- Hiring manager badge (if identified): "Addressed to: [Name]"
-- Content area: rendered markdown/text
-- Action buttons per tab:
-  - Copy to clipboard
-  - Download .docx (CV and Cover Letter only)
-- Empty state when no output
+**Learned preferences:** Users upload revised versions of generated docs via FeedbackModal. Claude diffs original vs revised and extracts durable style rules. Rules are stored in localStorage (`cv-toolkit:learnings:{skill}`, max 40 per skill) and appended to future prompts via `formatLearningsBlock()`.
 
-### M5: Storage Layer
+**Master CV compiler:** Upload a .zip of multiple CV files → extract text from each → send to Claude to synthesize one comprehensive master CV → save for future tailoring.
 
-**File:** `src/lib/storage.js`
+## DOCX Formatting
 
-```js
-// API Key
-saveApiKey(key: string): void
-getApiKey(): string | null
-clearApiKey(): void
-
-// Master CV (stores extracted text + original filename)
-saveMasterCV(text: string, filename: string): void
-getMasterCV(): { text: string, filename: string } | null
-clearMasterCV(): void
-
-// Settings
-saveTheme(theme: 'light' | 'dark'): void
-getTheme(): 'light' | 'dark'
-```
-
-**Implementation:** localStorage with `cv-toolkit:` prefix for all keys.
-
-### M6: Docx Generator
-
-**File:** `src/lib/docx.js`
-
-```js
-async function generateCVDocx(content: string, candidateName: string): Promise<Blob>
-async function generateCoverLetterDocx(content: string, recipientName: string): Promise<Blob>
-```
-
-**Formatting:**
-- Font: Arial 11pt
-- Margins: 1 inch
-- Headings: Bold, 14pt
-- Bullets: Proper list formatting (not unicode bullets)
+- Font: Arial throughout
+- CV: Name 14pt bold, section headers 11pt bold uppercase with bottom border, body 10.5pt
+- Cover letter: Sender 12pt bold, body 11pt, signature 11pt bold
+- Line spacing: 1.15 (276 twips)
+- Margins: 1 inch all sides
 - Page size: US Letter
+- Bullets: Proper numbering references (not Unicode)
+- Filenames: sanitized, include company + role when available
 
-## Prompts
+## API Configuration
 
-Store prompts as JS template literals in `src/prompts/`. Each exports a function that takes inputs and returns the full prompt string.
+All Claude API calls are proxied through a Supabase Edge Function:
 
-**cv-writer.js:** Embed full CV Writer skill. Input: `{ jobDescription, masterCV }`
+```js
+edge_function: 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude'
+model: 'claude-sonnet-4-20250514'
+max_tokens: 8000
+// Anthropic API key is stored as Supabase secret HEAD_HUNTER — never exposed to the client
+```
 
-**job-research.js:** Embed full Job Research skill. Input: `{ jobDescription, companyName, cvHighlights }`
+Error handling: 429 → rate limit, plus network and JSON parse errors.
 
-**cover-letter.js:** Embed full Cover Letter skill. Input: `{ jobDescription, tailoredCV, hiringManager, companyBrief }`
+## Commands
+
+```bash
+npm run dev       # Start dev server (Vite)
+npm run build     # Production build
+npm run preview   # Preview production build
+```
 
 ## Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| API key storage | localStorage | Simple, user controls their key, no backend needed |
-| CV parsing | PDF.js for PDF, mammoth for DOCX | Client-side, no upload to server |
-| Response streaming | No (V1) | Simpler error handling, add in V2 |
-| State management | React useState + props | App is small, no need for Redux/Zustand |
-| Styling | Tailwind only | Fast, consistent, no CSS debugging |
+| API key storage | Supabase Edge Function secret | Key never exposed to client |
+| CV parsing | pdfjs-dist + mammoth | Client-side only, no server upload |
+| Response streaming | Not yet | Simpler error handling |
+| State management | useState + props | App is small enough |
+| Styling | Tailwind only | No custom CSS to debug |
+| Output format | Structured JSON → forms | Enables editing + clean DOCX |
+| Learnings | localStorage rules | Persists across sessions, no backend |
 
-## Commands
-
-```bash
-# Dev
-npm run dev
-
-# Build
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-## V2 Backlog (Not V1)
+## Backlog
 
 - [ ] Response streaming for better UX
 - [ ] Application history (save past generations)
 - [ ] Multiple CV profiles
 - [ ] Direct LinkedIn integration
 - [ ] PDF export option
-- [ ] Editable outputs before download

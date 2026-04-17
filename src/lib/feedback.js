@@ -7,9 +7,9 @@ function extractJson(text) {
   return JSON.parse(candidate);
 }
 
-export async function analyseRevisions({ apiKey, originals, revised }) {
+export async function analyseRevisions({ originals, revised }) {
   const prompt = buildFeedbackPrompt({ originals, revised });
-  const raw = await callClaude({ apiKey, prompt });
+  const raw = await callClaude({ prompt });
   try {
     return extractJson(raw);
   } catch {

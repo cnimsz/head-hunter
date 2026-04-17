@@ -1,10 +1,6 @@
 const PREFIX = 'cv-toolkit:';
 const k = (name) => PREFIX + name;
 
-export function saveApiKey(key) { localStorage.setItem(k('apiKey'), key); }
-export function getApiKey() { return localStorage.getItem(k('apiKey')); }
-export function clearApiKey() { localStorage.removeItem(k('apiKey')); }
-
 export function saveMasterCV(text, filename) {
   localStorage.setItem(k('cv'), JSON.stringify({ text, filename }));
 }

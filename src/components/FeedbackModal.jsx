@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { extractTextFromFile } from '../lib/cvParser.js';
 import { analyseRevisions } from '../lib/feedback.js';
 import { appendLearnings, getLearnings } from '../lib/learnings.js';
-import { getApiKey } from '../lib/storage.js';
 
 const SKILLS = [
   { id: 'cv', label: 'CV', originalKey: 'cv' },
@@ -33,15 +32,12 @@ export default function FeedbackModal({ result, onClose }) {
   }
 
   async function handleAnalyse() {
-    const apiKey = getApiKey();
-    if (!apiKey) { setError('Add your Anthropic API key in Settings first.'); return; }
     const anyRevised = Object.values(revised).some((v) => v.trim());
     if (!anyRevised) { setError('Paste or upload at least one revised version.'); return; }
     setError(null);
     setStatus('analysing');
     try {
       const out = await analyseRevisions({
-        apiKey,
         originals: {
           cv: result.cv,
           coverLetter: result.coverLetter,
