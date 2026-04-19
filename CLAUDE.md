@@ -10,9 +10,9 @@ All processing runs client-side in the browser — no backend.
 - **Document generation:** `docx` + `file-saver`
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
 - **API:** Anthropic Messages API — claude-sonnet-4-20250514, proxied via Supabase Edge Function (`head-hunter-claude`)
-- **Supabase:** Project ref `jxsjgwrkymhtnkwhwtoz` — edge function uses `HEAD_HUNTER` secret for the Anthropic API key
+- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` secret for the Anthropic API key
 - **Storage:** localStorage (prefix: `cv-toolkit:`)
-- **Deploy:** Vercel
+- **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
 ## Architecture
 
@@ -157,7 +157,7 @@ Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLette
 All Claude API calls are proxied through a Supabase Edge Function:
 
 ```js
-edge_function: 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude'
+edge_function: 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude'
 model: 'claude-sonnet-4-20250514'
 max_tokens: 8000
 // Anthropic API key is stored as Supabase secret HEAD_HUNTER — never exposed to the client

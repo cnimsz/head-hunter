@@ -65,7 +65,7 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
   return cvs;
 }
 
-const EDGE_FN_URL = 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude';
+const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
 
 export async function compileMasterCV({ cvs }) {
   const prompt = buildMasterCVPrompt({ cvs });

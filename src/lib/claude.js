@@ -5,7 +5,7 @@ import { formatLearningsBlock } from './learnings.js';
 
 const MODEL = 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 8000;
-const EDGE_FN_URL = 'https://jxsjgwrkymhtnkwhwtoz.supabase.co/functions/v1/head-hunter-claude';
+const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
 
 async function callClaude({ prompt }) {
   let res;
