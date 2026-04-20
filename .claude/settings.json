@@ -1,0 +1,73 @@
+{
+  "$schema": "https://claude.com/schemas/settings.json",
+  "_comment": "Head Hunter project settings for Claude Code. Commit this to git. Personal overrides go in settings.local.json (gitignored).",
+
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run preview)",
+      "Bash(npm run lint *)",
+      "Bash(npm test *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(npx supabase status)",
+      "Bash(npx supabase functions list)",
+      "Bash(npx supabase secrets list)",
+      "Bash(vercel env ls)",
+      "Bash(vercel inspect *)",
+      "Bash(deno check *)",
+      "Bash(curl *)",
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(npx supabase secrets unset *)"
+    ]
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "_description": "Warn when the model ID changes in claude.js",
+        "matcher": {
+          "tool": "Edit",
+          "paths": ["src/lib/claude.js"]
+        },
+        "command": "grep -nE 'claude-(opus|sonnet|haiku)-[0-9]' src/lib/claude.js && echo '>>> Model IDs found above. Verify none are deprecated.'"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "_description": "Confirm before editing the deployed edge function",
+        "matcher": {
+          "tool": "Edit",
+          "paths": ["supabase/functions/**"]
+        },
+        "command": "echo '>>> About to edit a deployed edge function. Remember to run /deploy-edge-function after.'"
+      }
+    ],
+    "SessionStart": [
+      {
+        "_description": "Display project status at session start",
+        "command": "echo 'Head Hunter' && git log -1 --oneline && echo '---' && echo 'Skills available: deploy-edge-function, test-pipeline, model-swap, ship-it' && echo 'Agent: code-reviewer (invoke with: \"ask the code-reviewer subagent to...\")'"
+      }
+    ]
+  },
+
+  "env": {
+    "_comment": "Env vars loaded in every Claude Code session for this project",
+    "CLAUDE_CODE_THEME": "dark"
+  },
+
+  "claudeMdExcludes": []
+}

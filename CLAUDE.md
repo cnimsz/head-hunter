@@ -9,7 +9,7 @@ All processing runs client-side in the browser — no backend.
 - **Styling:** Tailwind CSS 3 (dark mode via class toggle)
 - **Document generation:** `docx` + `file-saver`
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
-- **API:** Anthropic Messages API — claude-sonnet-4-20250514, proxied via Supabase Edge Function (`head-hunter-claude`)
+- **API:** Anthropic Messages API — claude-sonnet-4-6, proxied via Supabase Edge Function (`head-hunter-claude`)
 - **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` secret for the Anthropic API key
 - **Storage:** localStorage (prefix: `cv-toolkit:`)
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
@@ -158,12 +158,32 @@ All Claude API calls are proxied through a Supabase Edge Function:
 
 ```js
 edge_function: 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude'
-model: 'claude-sonnet-4-20250514'
+model: 'claude-sonnet-4-6'
 max_tokens: 8000
 // Anthropic API key is stored as Supabase secret HEAD_HUNTER — never exposed to the client
 ```
 
 Error handling: 429 → rate limit, plus network and JSON parse errors.
+
+## Model Configuration
+
+The Claude model is configured via the `MODEL` constant in `src/lib/claude.js`. Current supported models:
+
+| Model | ID | Input / Output per Mtok | Use case |
+|-------|----|------------------------|----------|
+| Opus 4.7 | `claude-opus-4-7` | $5 / $25 | Highest quality, worth the cost for critical outputs |
+| Sonnet 4.6 | `claude-sonnet-4-6` | $3 / $15 | **DEFAULT** — excellent quality at lower cost |
+| Haiku 4.5 | `claude-haiku-4-5-20251001` | $1 / $5 | Fast iteration, bulk runs, testing |
+
+**Deprecated — do not use:** `claude-sonnet-4-20250514`, `claude-3-*`, or any ID with a pre-2025-11 date suffix.
+
+## Code Style
+
+- **ES modules only** — `import`/`export`, never `require`
+- **React functional components with hooks** — no class components
+- **Tailwind utility classes** for all styling — no CSS modules, no inline styles beyond dynamic values
+- **TypeScript is not used** — keep it that way unless we migrate the whole repo
+- Prefer destructured imports: `import { Button } from '...'`
 
 ## Commands
 
@@ -172,6 +192,18 @@ npm run dev       # Start dev server (Vite)
 npm run build     # Production build
 npm run preview   # Preview production build
 ```
+
+## Testing
+
+- **Full pipeline**: `/test-pipeline` (skill runs end-to-end with `tests/sample-jd.txt`)
+- **Edge function only**: curl the function URL directly (see deploy-edge-function skill)
+- **UI sanity**: load `/` in browser, paste JD, generate, download all three outputs, confirm they open in Word
+
+Always run `/test-pipeline` after:
+- Model changes
+- Prompt changes
+- Edge function changes
+- Anything touching `extractJson()` or `generateCVDocx()`
 
 ## Design Decisions
 
@@ -185,6 +217,20 @@ npm run preview   # Preview production build
 | Output format | Structured JSON → forms | Enables editing + clean DOCX |
 | Learnings | localStorage rules | Persists across sessions, no backend |
 
+## Known Gotchas
+
+- **Pipe characters in Claude responses** corrupt JSON parsing. `extractJson()` handles it. If you migrate to structured outputs, this problem disappears.
+- **Raw JSON flashing** in the UI before rendering. Always wait for full response before rendering — `cvDataToText()` and `clDataToText()` expect complete data.
+- **CV too long (3+ pages)** happens when prompts don't enforce 2-page max + 4 bullets per role. The prompt templates have this — don't weaken it.
+- **CORS errors** on first deploy usually mean the edge function isn't setting `Access-Control-Allow-Origin` correctly. Match the response headers to the Vercel production domain.
+- **Windows paths break** if Claude Code operates on OneDrive-synced files mid-sync. If you hit weird "file not found" errors, check OneDrive status.
+
+## When Claude Should Ask vs. Act
+
+- **Ask first**: any change to the edge function, any secret management, any deploy, any refactor touching more than 3 files.
+- **Act immediately**: typos, lint fixes, small bug fixes, documentation updates.
+- **Always use Plan Mode** for: architecture changes, adding new features, model migrations, structured-output migrations.
+
 ## Backlog
 
 - [ ] Response streaming for better UX
@@ -192,3 +238,5 @@ npm run preview   # Preview production build
 - [ ] Multiple CV profiles
 - [ ] Direct LinkedIn integration
 - [ ] PDF export option
+- [ ] Add structured outputs to replace `extractJson()`
+- [ ] Add prompt caching for multi-call sessions

@@ -3,21 +3,24 @@ import { buildJobResearchPrompt } from '../prompts/job-research.js';
 import { buildCoverLetterPrompt } from '../prompts/cover-letter.js';
 import { formatLearningsBlock } from './learnings.js';
 
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
 const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
 
-async function callClaude({ prompt }) {
+async function callClaude({ prompt, masterCV }) {
+  const payload = {
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    messages: [{ role: 'user', content: prompt }]
+  };
+  if (masterCV) payload.masterCV = masterCV;
+
   let res;
   try {
     res = await fetch(EDGE_FN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify(payload)
     });
   } catch (e) {
     throw new Error(`Network error calling Claude: ${e.message}`);
@@ -114,7 +117,8 @@ export async function generateApplication({
 }) {
   onStep('cv');
   const cvRaw = await callClaude({
-    prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') })
+    prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') }),
+    masterCV: cvText
   });
   const cvData = extractJson(cvRaw);
   const cv = cvDataToText(cvData);
@@ -126,7 +130,8 @@ export async function generateApplication({
       companyName,
       cvHighlights: cv.slice(0, 2000),
       learnings: formatLearningsBlock('linkedIn')
-    })
+    }),
+    masterCV: cvText
   });
   const research = extractJson(researchRaw);
   const hiringManagerName =
@@ -142,7 +147,8 @@ export async function generateApplication({
       hiringManager: hiringManagerName,
       companyBrief: research.companyBrief,
       learnings: formatLearningsBlock('coverLetter')
-    })
+    }),
+    masterCV: cvText
   });
   const clData = extractJson(clRaw);
   const coverLetter = clDataToText(clData);
