@@ -26,8 +26,8 @@
 ### Document Structure
 
 ```
-Colin Nimsz
-Berlin, Germany | +49 XXX XXX XXXX | colin@email.com
+Your Name
+City, Country | +Country XXX XXX XXXX | you@email.com
 
 [Date: April 15, 2026]
 
@@ -52,7 +52,7 @@ Dear [Mr./Ms. Last Name],
 
 Best regards,
 
-Colin Nimsz
+Your Name
 ```
 
 ### Spacing Rules

@@ -4,6 +4,7 @@ import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import { getTheme, saveTheme } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
+import { getProfile, profileForGeneration } from './lib/profile.js';
 
 export default function App() {
   const [theme, setTheme] = useState(getTheme());
@@ -29,6 +30,7 @@ export default function App() {
         jobDescription,
         cvText,
         companyName,
+        profile: profileForGeneration(getProfile()),
         onStep: setCurrentStep
       });
       setResult(out);

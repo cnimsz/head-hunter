@@ -149,7 +149,7 @@ function buildCLFromData(data) {
 
   // Sender name — 12pt bold
   out.push(para({
-    children: [run(data.senderName || 'Colin Nimsz', { size: pt(12), bold: true })],
+    children: [run(data.senderName || '', { size: pt(12), bold: true })],
     spacing: { after: 0 }
   }));
 
@@ -214,7 +214,7 @@ function buildCLFromData(data) {
 
   // Signature — 11pt bold
   out.push(para({
-    children: [run(data.signatureName || 'Colin Nimsz', { size: pt(11), bold: true })],
+    children: [run(data.signatureName || data.senderName || '', { size: pt(11), bold: true })],
     spacing: { after: 0 }
   }));
 

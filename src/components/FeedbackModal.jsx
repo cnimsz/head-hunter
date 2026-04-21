@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { extractTextFromFile } from '../lib/cvParser.js';
 import { analyseRevisions } from '../lib/feedback.js';
 import { appendLearnings, getLearnings } from '../lib/learnings.js';
+import { updateProfileFromText } from '../lib/profile.js';
 
 const SKILLS = [
   { id: 'cv', label: 'CV', originalKey: 'cv' },
@@ -22,6 +23,7 @@ export default function FeedbackModal({ result, onClose }) {
     try {
       const text = await extractTextFromFile(file);
       setRevised((r) => ({ ...r, [skill]: text }));
+      if (skill === 'cv' || skill === 'coverLetter') updateProfileFromText(text);
     } catch (e) {
       setError(`${skill}: ${e.message}`);
     }
@@ -35,6 +37,10 @@ export default function FeedbackModal({ result, onClose }) {
     const anyRevised = Object.values(revised).some((v) => v.trim());
     if (!anyRevised) { setError('Paste or upload at least one revised version.'); return; }
     setError(null);
+    // Refresh profile from any pasted-in revisions too (file uploads already
+    // update it in handleFile).
+    if (revised.cv) updateProfileFromText(revised.cv);
+    if (revised.coverLetter) updateProfileFromText(revised.coverLetter);
     setStatus('analysing');
     try {
       const out = await analyseRevisions({

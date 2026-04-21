@@ -34,7 +34,7 @@ EXPERIENCE
 ### Contact Line Format
 Single line, separated by vertical bars:
 ```
-Berlin, Germany | +49 XXX XXX XXXX | colin@email.com | linkedin.com/in/colinnimsz
+City, Country | +Country XXX XXX XXXX | you@email.com | linkedin.com/in/yourhandle
 ```
 
 ### Professional Summary

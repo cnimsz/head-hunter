@@ -1,4 +1,18 @@
-export function buildCoverLetterPrompt({ jobDescription, tailoredCV, hiringManager, companyBrief, learnings = '' }) {
+function formatToday() {
+  const d = new Date();
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+export function buildCoverLetterPrompt({
+  jobDescription,
+  tailoredCV,
+  hiringManager,
+  companyBrief,
+  senderName = '',
+  senderContact = '',
+  today = formatToday(),
+  learnings = ''
+}) {
   return `${learnings}
 You create concise, high-impact cover letters. Maximum 12 lines, exactly 3 bullet points.
 
@@ -67,6 +81,10 @@ People feel safe saying "no" and anxious when pressured for "yes."
 
 Write a cover letter for this application.
 
+### Sender Identity (use EXACTLY as given — do not alter, substitute, or invent):
+- senderName: ${senderName || '(extract from CV header)'}
+- senderContact: ${senderContact || '(extract from CV header)'}
+
 ### Hiring Manager: ${hiringManager || 'Dear Hiring Team'}
 
 ### Company Context:
@@ -82,9 +100,9 @@ ${tailoredCV}
 Return a single JSON object with this exact structure. No text before or after the JSON.
 
 {
-  "senderName": "Colin Nimsz",
-  "senderContact": "Berlin, Germany | +49 176 7794 4244 | CNimsz@gmail.com",
-  "date": "April 16, 2026",
+  "senderName": "<the exact senderName provided above, or the candidate's name from the CV>",
+  "senderContact": "<the exact senderContact provided above, or the contact line from the CV>",
+  "date": "${today}",
   "recipient": {
     "name": "Ms. Jane Smith",
     "title": "VP of Operations",
@@ -99,11 +117,12 @@ Return a single JSON object with this exact structure. No text before or after t
     "Third proof point: their need → your achievement → implied benefit"
   ],
   "closingParagraph": "1-2 sentences with no-oriented close.",
-  "signatureName": "Colin Nimsz"
+  "signatureName": "<same as senderName>"
 }
 
 STRICT RULES:
-- senderContact: ALWAYS use "Berlin, Germany | +49 176 7794 4244 | CNimsz@gmail.com"
+- senderName / senderContact / signatureName: use the values given in "Sender Identity" above verbatim. If those are blank, fall back to the name and contact line from the Tailored CV. NEVER use placeholder or example data from this prompt.
+- signatureName must equal senderName.
 - openingParagraph: 2-3 sentences max.
 - bullets: EXACTLY 3 items. Each is a single string, 1-2 lines max.
 - closingParagraph: 1-2 sentences max. Must use a no-oriented question (Chris Voss technique).

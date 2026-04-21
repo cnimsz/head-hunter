@@ -3,9 +3,10 @@ import { buildJobResearchPrompt } from '../prompts/job-research.js';
 import { buildCoverLetterPrompt } from '../prompts/cover-letter.js';
 import { formatLearningsBlock } from './learnings.js';
 
-const MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 8000;
-const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
+export const MODEL = 'claude-sonnet-4-6';
+export const MAX_TOKENS = 8000;
+export const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
+export const APP_TOKEN = import.meta.env?.VITE_HH_APP_TOKEN || '';
 
 async function callClaude({ prompt, masterCV }) {
   const payload = {
@@ -19,7 +20,10 @@ async function callClaude({ prompt, masterCV }) {
   try {
     res = await fetch(EDGE_FN_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hh-token': APP_TOKEN
+      },
       body: JSON.stringify(payload)
     });
   } catch (e) {
@@ -28,7 +32,9 @@ async function callClaude({ prompt, masterCV }) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 429) throw new Error('Rate limited by Anthropic. Wait and retry.');
+    if (res.status === 401) throw new Error('App token rejected by server. Check your deployment config.');
+    if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
+    if (res.status === 413) throw new Error('Your CV or job description is too long. Trim and retry.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
 
@@ -113,6 +119,7 @@ export async function generateApplication({
   jobDescription,
   cvText,
   companyName,
+  profile = null,
   onStep = () => {}
 }) {
   onStep('cv');
@@ -146,6 +153,8 @@ export async function generateApplication({
       tailoredCV: cv,
       hiringManager: hiringManagerName,
       companyBrief: research.companyBrief,
+      senderName: profile?.name || cvData?.name || '',
+      senderContact: profile?.contactLine || cvData?.contact || '',
       learnings: formatLearningsBlock('coverLetter')
     }),
     masterCV: cvText

@@ -10,8 +10,8 @@ All processing runs client-side in the browser — no backend.
 - **Document generation:** `docx` + `file-saver`
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
 - **API:** Anthropic Messages API — claude-sonnet-4-6, proxied via Supabase Edge Function (`head-hunter-claude`)
-- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` secret for the Anthropic API key
-- **Storage:** localStorage (prefix: `cv-toolkit:`)
+- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` (Anthropic API key) and `HEAD_HUNTER_APP_TOKEN` (shared app secret) secrets
+- **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, and `learnings:*`
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
 ## Architecture
@@ -109,8 +109,8 @@ Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLette
 ### Cover Letter Data (clData)
 ```js
 {
-  senderName: string,
-  senderContact: string,    // hardcoded: "Berlin, Germany | +49 176 7794 4244 | CNimsz@gmail.com"
+  senderName: string,       // sourced from profile.name (localStorage) or the CV header
+  senderContact: string,    // sourced from profile contact line or the CV header
   date: string,
   recipient: { name, title, company, location },
   salutation: string,
@@ -160,10 +160,25 @@ All Claude API calls are proxied through a Supabase Edge Function:
 edge_function: 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude'
 model: 'claude-sonnet-4-6'
 max_tokens: 8000
-// Anthropic API key is stored as Supabase secret HEAD_HUNTER — never exposed to the client
+// Anthropic API key stored as Supabase secret HEAD_HUNTER — never exposed to the client.
+// Every client request must send header `x-hh-token: <VITE_HH_APP_TOKEN>`. The edge function
+// verifies it matches the `HEAD_HUNTER_APP_TOKEN` Supabase secret. Requests that omit or
+// mis-match the token get 401. This stops curl-the-URL abuse of the Anthropic budget.
 ```
 
-Error handling: 429 → rate limit, plus network and JSON parse errors.
+Edge function also enforces: model allow-list (sonnet-4-6, haiku-4-5, opus-4-7), `max_tokens` ≤ 8000, body ≤ 200KB, 20 req/min per IP (in-memory, per-isolate).
+
+Error handling: 401 → token mismatch, 413 → body too large, 429 → rate limit, plus network and JSON parse errors.
+
+## Environment variables
+
+| Name | Where | Purpose |
+|------|-------|---------|
+| `HEAD_HUNTER` | Supabase secret | Anthropic API key |
+| `HEAD_HUNTER_APP_TOKEN` | Supabase secret | Shared app secret; must equal `VITE_HH_APP_TOKEN` |
+| `VITE_HH_APP_TOKEN` | `.env.local` (dev) + Vercel env (prod) | Sent as `x-hh-token` header by the client |
+
+Rotate the app token: set a new value in both Supabase and Vercel, redeploy both. Old builds using the old token will start getting 401s.
 
 ## Model Configuration
 

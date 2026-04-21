@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { extractTextFromFile } from '../lib/cvParser.js';
 import { getMasterCV, saveMasterCV } from '../lib/storage.js';
+import { updateProfileFromText } from '../lib/profile.js';
 import MasterCVCompiler from './MasterCVCompiler.jsx';
 
 const STEP_LABEL = {
@@ -41,6 +42,7 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
       const text = await extractTextFromFile(f);
       setCvFileText(text);
       if (saveThisCV) saveMasterCV(text, f.name);
+      updateProfileFromText(text);
       setUseSavedCV(false);
     } catch (err) {
       setParseError(err.message || 'Failed to read file.');

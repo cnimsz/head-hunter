@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { compileMasterCV, extractCVsFromZip, MAX_CVS } from '../lib/compileMasterCV.js';
 import { saveMasterCV } from '../lib/storage.js';
+import { updateProfileFromText } from '../lib/profile.js';
 
 export default function MasterCVCompiler({ onClose, onCompiled }) {
   const [zipFile, setZipFile] = useState(null);
@@ -23,6 +24,11 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
       const masterText = await compileMasterCV({ cvs });
       const filename = `Master CV (${cvs.length} sources).md`;
       saveMasterCV(masterText, filename);
+      // Feed every source CV into the profile so we capture identity even
+      // if the synthesised master drops a field (e.g. phone). Master runs
+      // last so its values win on ties.
+      for (const cv of cvs) updateProfileFromText(cv.text);
+      updateProfileFromText(masterText);
       setResult({ text: masterText, count: cvs.length, filename });
       setStatus('done');
       onCompiled?.();

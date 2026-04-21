@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
 import { buildMasterCVPrompt } from '../prompts/master-cv.js';
+import { MODEL, MAX_TOKENS, EDGE_FN_URL, APP_TOKEN } from './claude.js';
 
 const MAX_CVS = 100;
 const SUPPORTED = ['.pdf', '.docx', '.txt', '.md'];
@@ -65,24 +66,27 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
   return cvs;
 }
 
-const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
-
 export async function compileMasterCV({ cvs }) {
   const prompt = buildMasterCVPrompt({ cvs });
 
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-hh-token': APP_TOKEN
+    },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
       messages: [{ role: 'user', content: prompt }]
     })
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 429) throw new Error('Rate limited by Anthropic. Wait and retry.');
+    if (res.status === 401) throw new Error('App token rejected by server. Check your deployment config.');
+    if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
+    if (res.status === 413) throw new Error('Your CV collection is too large. Try fewer CVs.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
 

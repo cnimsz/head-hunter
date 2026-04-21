@@ -63,9 +63,12 @@ Test against the deployed function:
 ```bash
 curl -X POST https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude \
   -H "Content-Type: application/json" \
-  -d '{"model":"claude-sonnet-4-20250514","max_tokens":100,"messages":[{"role":"user","content":"Reply with the word hello"}]}' \
+  -H "x-hh-token: $HEAD_HUNTER_APP_TOKEN" \
+  -d '{"model":"claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"Reply with the word hello"}]}' \
   --max-time 30
 ```
+
+Note: the `x-hh-token` header is required. Export `HEAD_HUNTER_APP_TOKEN` in your shell first (same value you set as the Supabase secret). A smoke test without the header should return 401 — that's the defense working.
 
 Confirm the response is 200 and contains valid JSON with a `content` array.
 
