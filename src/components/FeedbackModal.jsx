@@ -10,10 +10,22 @@ const SKILLS = [
   { id: 'linkedIn', label: 'LinkedIn Message', originalKey: 'linkedInMessage' }
 ];
 
+function formatRules(rules) {
+  return (rules || []).map((r, i) => `${i + 1}. ${r}`).join('\n');
+}
+
+function parseRules(text) {
+  return (text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^\d+[.)]\s*/, '').trim())
+    .filter(Boolean);
+}
+
 export default function FeedbackModal({ result, onClose }) {
   const [revised, setRevised] = useState({ cv: '', coverLetter: '', linkedIn: '' });
   const [status, setStatus] = useState('input');
   const [analysis, setAnalysis] = useState(null);
+  const [rulesText, setRulesText] = useState({ cv: '', coverLetter: '', linkedIn: '' });
   const [error, setError] = useState(null);
   const [applied, setApplied] = useState({ cv: false, coverLetter: false, linkedIn: false });
 
@@ -52,6 +64,11 @@ export default function FeedbackModal({ result, onClose }) {
         revised
       });
       setAnalysis(out);
+      setRulesText({
+        cv: formatRules(out?.cv?.rules),
+        coverLetter: formatRules(out?.coverLetter?.rules),
+        linkedIn: formatRules(out?.linkedIn?.rules)
+      });
       setStatus('review');
     } catch (e) {
       setError(e.message || String(e));
@@ -60,43 +77,10 @@ export default function FeedbackModal({ result, onClose }) {
   }
 
   function applySkill(skill) {
-    const rules = (analysis?.[skill]?.rules || [])
-      .map((r) => (r || '').trim())
-      .filter(Boolean);
+    const rules = parseRules(rulesText[skill]);
     if (rules.length === 0) return;
     appendLearnings(skill, rules);
     setApplied((a) => ({ ...a, [skill]: true }));
-  }
-
-  function updateSummary(skill, value) {
-    setAnalysis((a) => ({
-      ...a,
-      [skill]: { ...(a?.[skill] || {}), summary: value }
-    }));
-  }
-
-  function updateRule(skill, index, value) {
-    setAnalysis((a) => {
-      const current = a?.[skill] || {};
-      const rules = [...(current.rules || [])];
-      rules[index] = value;
-      return { ...a, [skill]: { ...current, rules } };
-    });
-  }
-
-  function deleteRule(skill, index) {
-    setAnalysis((a) => {
-      const current = a?.[skill] || {};
-      const rules = (current.rules || []).filter((_, i) => i !== index);
-      return { ...a, [skill]: { ...current, rules } };
-    });
-  }
-
-  function addRule(skill) {
-    setAnalysis((a) => {
-      const current = a?.[skill] || { summary: '', rules: [] };
-      return { ...a, [skill]: { ...current, rules: [...(current.rules || []), ''] } };
-    });
   }
 
   function applyAll() {
@@ -164,70 +148,37 @@ export default function FeedbackModal({ result, onClose }) {
         {status === 'review' && analysis && (
           <>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-              Review and edit what Claude identified. Fix any inaccurate summaries, reword rules, delete
-              ones you disagree with, or add your own. Apply per skill, or all at once.
+              Review the rules Claude proposed. Edit, reorder, or delete lines before applying.
+              Each numbered line becomes one rule. Apply per skill, or all at once.
             </p>
             {SKILLS.map((s) => {
               const a = analysis[s.id] || {};
-              const rules = a.rules || [];
               const existingCount = getLearnings(s.id).length;
               const isApplied = applied[s.id];
-              const validRuleCount = rules.filter((r) => (r || '').trim()).length;
+              const parsedCount = parseRules(rulesText[s.id]).length;
               return (
                 <div key={s.id} className="mb-4 border border-slate-200 dark:border-slate-700 rounded p-3">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold">{s.label}</h3>
                     <button
                       onClick={() => applySkill(s.id)}
-                      disabled={validRuleCount === 0 || isApplied}
+                      disabled={parsedCount === 0 || isApplied}
                       className="text-xs px-3 py-1 rounded bg-emerald-600 text-white disabled:opacity-40"
                     >
-                      {isApplied ? 'Applied ✓' : `Apply ${validRuleCount} rule(s)`}
+                      {isApplied ? 'Applied ✓' : `Apply ${parsedCount} rule(s)`}
                     </button>
                   </div>
-
-                  <label className="text-[11px] font-medium text-slate-500 block mb-1">Summary</label>
-                  <textarea
-                    value={a.summary || ''}
-                    onChange={(e) => updateSummary(s.id, e.target.value)}
-                    disabled={isApplied}
-                    placeholder="(no changes detected)"
-                    className="w-full min-h-[48px] px-2 py-1 mb-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
-                  />
-
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mb-2">
+                    <strong>Summary:</strong> {a.summary || '(no changes detected)'}
+                  </p>
                   <label className="text-[11px] font-medium text-slate-500 block mb-1">Rules</label>
-                  {rules.length > 0 ? (
-                    <ul className="space-y-1 mb-2">
-                      {rules.map((r, i) => (
-                        <li key={i} className="flex gap-2 items-start">
-                          <span className="text-xs text-slate-400 pt-1.5 w-4 text-right">{i + 1}.</span>
-                          <textarea
-                            value={r}
-                            onChange={(e) => updateRule(s.id, i, e.target.value)}
-                            disabled={isApplied}
-                            rows={1}
-                            className="flex-1 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
-                          />
-                          <button
-                            onClick={() => deleteRule(s.id, i)}
-                            disabled={isApplied}
-                            className="text-slate-400 hover:text-red-600 text-xs px-1 pt-1 disabled:opacity-40"
-                            aria-label="Delete rule"
-                          >✕</button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-slate-400 mb-2">No new rules proposed.</p>
-                  )}
-                  <button
-                    onClick={() => addRule(s.id)}
+                  <textarea
+                    value={rulesText[s.id]}
+                    onChange={(e) => setRulesText((t) => ({ ...t, [s.id]: e.target.value }))}
                     disabled={isApplied}
-                    className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-700 disabled:opacity-40"
-                  >
-                    + Add rule
-                  </button>
-
+                    placeholder="No new rules proposed. Add one per line — leading numbering is optional."
+                    className="w-full min-h-[120px] px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs leading-relaxed disabled:opacity-60"
+                  />
                   <p className="text-[10px] text-slate-400 mt-2">
                     Currently {existingCount} learned rule(s) stored for this skill.
                   </p>
