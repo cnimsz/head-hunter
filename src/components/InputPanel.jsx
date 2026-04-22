@@ -72,12 +72,12 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
         className="w-full min-h-[220px] px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
       />
 
-      <label className="text-sm font-medium mt-2">Company Name <span className="text-slate-400 font-normal">(optional)</span></label>
+      <label className="text-sm font-medium mt-2">Company Name and Job Title <span className="text-slate-400 font-normal">(optional)</span></label>
       <input
         type="text"
         value={companyName}
         onChange={(e) => setCompanyName(e.target.value)}
-        placeholder="e.g. Acme Robotics"
+        placeholder="e.g. Acme Robotics - Senior Engineer"
         className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
       />
 

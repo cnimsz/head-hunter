@@ -10,7 +10,7 @@ const TABS = [
   { id: 'linkedIn', label: 'Research & Outreach' }
 ];
 
-export default function OutputPanel({ result, error, companyName, jobDescription }) {
+export default function OutputPanel({ result, error, companyName }) {
   const [tab, setTab] = useState('cv');
   const [copied, setCopied] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -54,17 +54,16 @@ export default function OutputPanel({ result, error, companyName, jobDescription
 
   async function download() {
     if (!result) return;
-    const company = companyName || '';
-    const role = extractRoleTitle(jobDescription);
+    const companyAndRole = companyName || '';
     if (tab === 'cv') {
       const data = activeCvData;
       const name = data?.name || firstLine(result.cv) || 'Candidate';
-      await generateCVDocx(data, name, { company, role });
+      await generateCVDocx(data, name, { companyAndRole });
     }
     if (tab === 'coverLetter') {
       const data = activeClData;
-      const recipient = data?.signatureName || result.hiringManager || 'HiringTeam';
-      await generateCoverLetterDocx(data, recipient, { company, role });
+      const name = data?.senderName || data?.signatureName || firstLine(result.cv) || 'Candidate';
+      await generateCoverLetterDocx(data, name, { companyAndRole });
     }
   }
 
@@ -266,16 +265,6 @@ function CoverLetterDisplay({ data }) {
 
 function firstLine(s) {
   return (s || '').split(/\r?\n/)[0]?.trim() || '';
-}
-
-function extractRoleTitle(jd) {
-  if (!jd) return '';
-  const lines = jd.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const labelled = lines.find((l) => /^(job\s*title|role|position)\s*[:\-]/i.test(l));
-  if (labelled) {
-    return labelled.replace(/^(job\s*title|role|position)\s*[:\-]\s*/i, '').trim();
-  }
-  return lines[0] ? lines[0].slice(0, 80) : '';
 }
 
 function LinkedInView({ result }) {

@@ -13,7 +13,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState('idle');
-  const [lastInputs, setLastInputs] = useState({ companyName: '', jobDescription: '' });
+  const [lastInputs, setLastInputs] = useState({ companyName: '' });
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -24,7 +24,7 @@ export default function App() {
     setError(null);
     setResult(null);
     setIsGenerating(true);
-    setLastInputs({ companyName: companyName || '', jobDescription: jobDescription || '' });
+    setLastInputs({ companyName: companyName || '' });
     try {
       const out = await generateApplication({
         jobDescription,
@@ -75,7 +75,6 @@ export default function App() {
           result={result}
           error={error}
           companyName={lastInputs.companyName}
-          jobDescription={lastInputs.jobDescription}
         />
       </main>
 

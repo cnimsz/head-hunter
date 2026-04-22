@@ -280,32 +280,25 @@ function buildDoc(children) {
 }
 
 function safeFilename(s) {
-  return (s || 'output').replace(/[^a-z0-9\-_]+/gi, '-').replace(/-+/g, '-').slice(0, 60) || 'output';
+  return (s || 'output').replace(/[^a-z0-9_]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 60) || 'output';
 }
 
-function suffix({ company, role } = {}) {
-  const parts = [];
-  if (company) parts.push(safeFilename(company));
-  if (role) parts.push(safeFilename(role));
-  return parts.length ? `-${parts.join('-')}` : '';
+function suffix({ companyAndRole } = {}) {
+  return companyAndRole ? `_${safeFilename(companyAndRole)}` : '';
 }
 
 export async function generateCVDocx(contentOrData, candidateName = 'CV', meta = {}) {
-  const children = (contentOrData && typeof contentOrData === 'object' && contentOrData.name)
-    ? buildCVFromData(contentOrData)
-    : buildCVFromData(contentOrData); // always expect structured data now
+  const children = buildCVFromData(contentOrData);
   const doc = buildDoc(children);
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${safeFilename(candidateName)}-CV${suffix(meta)}.docx`);
+  saveAs(blob, `${safeFilename(candidateName)}_CV${suffix(meta)}.docx`);
   return blob;
 }
 
-export async function generateCoverLetterDocx(contentOrData, recipientName = 'CoverLetter', meta = {}) {
-  const children = (contentOrData && typeof contentOrData === 'object' && contentOrData.senderName)
-    ? buildCLFromData(contentOrData)
-    : buildCLFromData(contentOrData);
+export async function generateCoverLetterDocx(contentOrData, candidateName = 'Candidate', meta = {}) {
+  const children = buildCLFromData(contentOrData);
   const doc = buildDoc(children);
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `Cover-Letter-${safeFilename(recipientName)}${suffix(meta)}.docx`);
+  saveAs(blob, `${safeFilename(candidateName)}_CoverLetter${suffix(meta)}.docx`);
   return blob;
 }

@@ -70,20 +70,46 @@ The entire cover letter must fit in 12 lines or fewer (excluding header/signatur
 ### Structure (12 lines total)
 
 ```
-[Line 1-2: Opening Hook]
-Engaging opener that shows you understand their challenge or connects personally to the company.
+[Line 1: JD Interpretation]
+"Here is what I understood from the JD: [one sentence on what the company is doing and what they need]."
 
-[Line 3-4: Bridge Statement]  
-Why you're the right fit — transition into your evidence.
+[Line 2: Candidate Bio]
+"Me: [location, credentials, years of experience, domain]."
 
-[Line 5-10: Three Bullet Points]
-• [Bullet 1: Match to Key Point #1]
-• [Bullet 2: Match to Key Point #2]  
-• [Bullet 3: Match to Key Point #3]
+[Line 3-9: Evidence — prose OR short factual bullets]
+Either fold all three proof points into one dense paragraph,
+OR use 3 short factual bullets without bold prefixes or explanatory tails.
 
-[Line 11-12: Confident Close]
-Forward-looking statement + clear call to action.
+[Line 10: Disarming opener to close]
+"Am I way off?"
+
+[Line 11-12: No-Oriented Close]
+"Would you be opposed to a brief conversation to explore whether my background aligns with what you are building at [Company]?"
 ```
+
+---
+
+## AI Detection — Critical Rules
+
+Cover letters are now routinely screened for AI generation. The following patterns are **immediate flags** to a savvy recruiter or hiring manager. Avoid all of them:
+
+### Patterns that scream AI
+- **"You need X:"** bullet intros — the single most recognizable AI cover letter pattern
+- **Three parallel bold-prefixed bullets** — the skeleton is visible even without "You need"
+- **Explanatory tail sentences** that connect back to the company: "giving [Company] a proven blueprint from day one," "directly mirroring the challenge you face today," "combining the structured reasoning your culture demands" — cut all of these
+- **Meta-framing labels** like "What I got from the JD:" as a standalone header — reads as AI content architecture
+- **Complete sentences with connective tissue** in bullets: "while simultaneously," "enabling a," "by establishing," "which led to"
+- **Sterile prose** — clean to the point of having no voice or personality
+
+### What reads as human
+- **"Me:" fragment** — terse, confident, unconventional; the single strongest human signal
+- **Short factual bullets without connectors** — reads as a founder pitching, not a template
+- **Domain specificity** — BaFin, CSSF, JFSC, S110, eIDAS etc. cannot be faked and anchors credibility
+- **Idiosyncratic framing** — "Am I way off?" before the Voss close signals a specific person, not a model
+- **Metric density** — numbers in every proof point
+
+### The test before delivering
+Read the letter and ask: could this have been written by any senior executive in this field, or does it sound like *this specific person*? If the former, it will be flagged. The "Me:" line and domain specifics are what make it the latter.
 
 ---
 
@@ -129,7 +155,9 @@ Research shows the Problem-Solution format outperforms all others:
 - **Don't be generic** — Every sentence should be specific to THIS job at THIS company
 - **Don't apologize** — Never highlight what you lack; focus on what you bring
 - **Don't use bullet points in isolation** — Bullets need context from the surrounding prose
+- **Don't use "—", use "-"** — People don't use this "—" they use "-" and not very often
 - **Don't exceed 12 lines** — If you can't be concise, you won't get read
+- **Don't use fluff words like "spearheaded"** — Confident people don't need to use puffery
 
 ---
 
@@ -166,19 +194,22 @@ From FBI hostage negotiator Chris Voss ("Never Split the Difference"): People fe
 ```
 Dear [Hiring Manager Name],
 
-[Opening Hook: Reference a specific company challenge, recent news, or why this role excites you — show you've done your research and understand their world.]
+Here is what I understood from the JD: [One sentence — what the company is building and what the role requires].
 
-[Bridge: One sentence positioning yourself as the solution to their needs.]
+Me: [Location], [credentials], [CXO/title] [X]+ years [domain expertise].
+[Proof point 1 — fact. Proof point 2 — fact. Proof point 3 — fact with metric.]
 
-• [Key Point 1: Their need → Your achievement → Implied benefit]
-• [Key Point 2: Their need → Your achievement → Implied benefit]
-• [Key Point 3: Their need → Your achievement → Implied benefit]
-
-[No-Oriented Close: "Would it be unreasonable to connect and explore how this experience could [specific benefit for them]?"]
+Am I way off? Would you be opposed to a brief conversation to explore whether my background aligns with what you are building at [Company]?
 
 Best regards,
-[Name]
+[Full Name]
 ```
+
+**Prose variant** (when bullets feel too structured):
+Fold all three proof points into the "Me:" paragraph as consecutive sentences. No bullets, no bold, no connectors — just facts separated by periods.
+
+**Bullet variant** (when facts are distinct enough to scan):
+Use plain bullets without bold prefixes. No "You need X:" framing. No explanatory tails. Each bullet is one or two clipped sentences — fact, metric, done.
 
 ---
 
@@ -209,15 +240,16 @@ Best regards,
 
 Before delivering the cover letter, verify:
 - [ ] Maximum 12 lines (excluding header/signature)
-- [ ] Exactly 3 bullet points
-- [ ] Each bullet connects their need → your proof → their benefit
-- [ ] Hiring manager addressed by name (or "Dear Hiring Team" if unavailable)
-- [ ] Opening references something specific about the company
-- [ ] No clichés or generic phrases
-- [ ] Quantified achievements in bullets
-- [ ] No-oriented close (Chris Voss technique)
-- [ ] Keywords from job description naturally included
-- [ ] Does NOT repeat CV verbatim — adds context
+- [ ] Opens with "Here is what I understood from the JD:" framing
+- [ ] "Me:" fragment as bio line — not a full sentence
+- [ ] Proof points are facts with metrics — no explanatory tails connecting back to the company
+- [ ] No "You need X:" bullet framing
+- [ ] No three parallel bold-prefixed bullets
+- [ ] No connective tissue: "while simultaneously," "enabling a," "combining the," "directly mirroring"
+- [ ] "Am I way off?" before the Voss close
+- [ ] No-oriented close (Chris Voss technique) — signed with full name
+- [ ] Domain specifics present (regulators, frameworks, institutions by name)
+- [ ] Passes the human voice test: sounds like THIS person, not any senior executive
 
 ---
 
