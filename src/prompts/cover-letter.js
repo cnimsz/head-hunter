@@ -39,19 +39,20 @@ The entire cover letter must fit in 12 lines (excluding header/signature).
 
 ### Structure (12 lines total)
 
-Line 1-2: Opening Hook
-- Show you understand their challenge or connect personally to the company
+Line 1 - JD Interpretation:
+  "Here is what I understood from the JD: [one sentence on what the company is doing and what they need]."
 
-Line 3-4: Bridge Statement
-- Why you're the right fit — transition into your evidence
+Line 2 - Candidate Bio:
+  "Me: [location, credentials, years of experience, domain]."
 
-Line 5-10: Three Bullet Points
-- [Bullet 1: Match to Key Point #1]
-- [Bullet 2: Match to Key Point #2]
-- [Bullet 3: Match to Key Point #3]
+Lines 3-9 - Evidence (3 short factual bullets):
+  Factual one-liners. NO bold prefixes. NO explanatory tails that tie back to the company ("giving [Company] a proven blueprint", "mirroring the challenge you face", etc.). Each bullet is a standalone fact with a number.
 
-Line 11-12: Confident Close
-- Use a no-oriented question (Chris Voss technique)
+Line 10 - Disarming opener to close:
+  "Am I way off?"
+
+Lines 11-12 - No-oriented close:
+  "Would you be opposed to a brief conversation to explore whether my background aligns with what you are building at [Company]?"
 
 ## The No-Oriented Close
 
@@ -77,6 +78,29 @@ People feel safe saying "no" and anxious when pressured for "yes."
 - Be generic - every sentence should be specific to THIS job
 - Exceed 12 lines
 - Use em-dashes (—) or en-dashes (–). Use a plain hyphen (-) and use it sparingly. Real people rarely use dashes in writing; em-dashes in particular are a well-known AI tell.
+
+## AI Detection - Patterns That Get You Flagged
+
+Cover letters are routinely screened for AI generation. The following patterns are immediate red flags. Avoid ALL of them:
+
+### Patterns that scream AI
+- "You need X:" bullet intros - the single most recognizable AI cover letter pattern. Do not use.
+- Bold prefixes on bullets ("**Scaled operations:**", "**Led teams:**") - even without "You need", the parallel skeleton reads as a template.
+- Explanatory tails that connect a fact back to the company: "giving [Company] a proven blueprint from day one", "directly mirroring the challenge you face today", "combining the structured reasoning your culture demands". Cut all of these. State the fact, stop.
+- Meta-framing labels used as standalone headers ("What I got from the JD:", "My relevant experience:"). The "Here is what I understood from the JD:" line IS allowed because it reads as conversational, not as a content architecture label.
+- Connective tissue inside bullets: "while simultaneously", "enabling a", "by establishing", "which led to". Short factual sentences only.
+- Sterile, over-polished prose with no voice. If every sentence is grammatically perfect and topic-neutral, it reads as AI.
+- Fluff verbs: "spearheaded", "leveraged", "orchestrated", "championed", "architected" (when used vaguely). Confident people don't need puffery. Use plain verbs: "built", "led", "ran", "shipped", "cut", "grew".
+
+### What reads as human
+- The "Me:" fragment is a strong human signal precisely because it's terse and unconventional. Keep it fragmentary.
+- Short factual bullets without connectors read as a founder pitching, not a template.
+- Domain specificity (regulator names, protocol names, system names the candidate actually works with) cannot be faked and anchors credibility. Pull these from the CV verbatim.
+- "Am I way off?" before the no-oriented close reads as a specific person, not a model.
+- Every proof point should carry a number. Metric density is hard to fake.
+
+### The test before emitting
+Read each bullet and ask: could any senior executive in this field have written this, or does it sound like this specific person? If it's generic, rewrite with more domain-specific nouns and numbers from the CV.
 
 ## Your Task
 
@@ -111,22 +135,22 @@ Return a single JSON object with this exact structure. No text before or after t
     "location": "City, Country"
   },
   "salutation": "Dear Ms. Smith,",
-  "openingParagraph": "2-3 sentences max. Hook + bridge to value.",
+  "openingParagraph": "Here is what I understood from the JD: <one sentence>.\\nMe: <location, credentials, years of experience, domain>.",
   "bullets": [
-    "First proof point: their need → your achievement → implied benefit",
-    "Second proof point: their need → your achievement → implied benefit",
-    "Third proof point: their need → your achievement → implied benefit"
+    "Short factual one-liner with a number. No bold prefix. No tail connecting back to the company.",
+    "Short factual one-liner with a number. No bold prefix. No tail connecting back to the company.",
+    "Short factual one-liner with a number. No bold prefix. No tail connecting back to the company."
   ],
-  "closingParagraph": "1-2 sentences with no-oriented close.",
+  "closingParagraph": "Am I way off?\\nWould you be opposed to a brief conversation to explore whether my background aligns with what you are building at <Company>?",
   "signatureName": "<same as senderName>"
 }
 
 STRICT RULES:
 - senderName / senderContact / signatureName: use the values given in "Sender Identity" above verbatim. If those are blank, fall back to the name and contact line from the Tailored CV. NEVER use placeholder or example data from this prompt.
 - signatureName must equal senderName.
-- openingParagraph: 2-3 sentences max.
-- bullets: EXACTLY 3 items. Each is a single string, 1-2 lines max.
-- closingParagraph: 1-2 sentences max. Must use a no-oriented question (Chris Voss technique).
+- openingParagraph: EXACTLY two lines separated by a single \\n character. Line 1 begins "Here is what I understood from the JD:". Line 2 begins "Me:".
+- bullets: EXACTLY 3 items. Each is a short factual one-liner with a metric. NO bold prefixes ("**Scaled X:**"). NO explanatory tails that connect the fact back to the company.
+- closingParagraph: EXACTLY two lines separated by a single \\n character. Line 1 is "Am I way off?". Line 2 is a no-oriented close beginning "Would you be opposed to".
 - Total body content (opening + bullets + closing): 12 lines max.
 - recipient.name: Use hiring manager name if known, otherwise null.
 - recipient.title: Their job title if known, otherwise null.

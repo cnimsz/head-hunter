@@ -184,11 +184,14 @@ function buildCLFromData(data) {
     spacing: { after: sp(12) }
   }));
 
-  // Opening paragraph — 11pt
-  out.push(para({
-    children: [run(data.openingParagraph || '', { size: pt(11) })],
-    spacing: { after: sp(12) }
-  }));
+  // Opening paragraph — 11pt (may contain \n — split into one paragraph per line)
+  const openingLines = (data.openingParagraph || '').split('\n');
+  openingLines.forEach((line, i) => {
+    out.push(para({
+      children: [run(line, { size: pt(11) })],
+      spacing: { after: i === openingLines.length - 1 ? sp(12) : 0 }
+    }));
+  });
 
   // Bullets — 11pt with numbering
   for (const b of data.bullets || []) {
@@ -200,11 +203,17 @@ function buildCLFromData(data) {
     }));
   }
 
-  // Closing paragraph — 11pt, 12pt gap above to separate from bullets
-  out.push(para({
-    children: [run(data.closingParagraph || '', { size: pt(11) })],
-    spacing: { before: sp(12), after: sp(12) }
-  }));
+  // Closing paragraph — 11pt, 12pt gap above to separate from bullets (may contain \n)
+  const closingLines = (data.closingParagraph || '').split('\n');
+  closingLines.forEach((line, i) => {
+    out.push(para({
+      children: [run(line, { size: pt(11) })],
+      spacing: {
+        before: i === 0 ? sp(12) : 0,
+        after: i === closingLines.length - 1 ? sp(12) : sp(6)
+      }
+    }));
+  });
 
   // Closing line — 11pt
   out.push(para({

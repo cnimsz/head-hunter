@@ -247,13 +247,13 @@ function CoverLetterDisplay({ data }) {
 
       <p>{data.salutation}</p>
 
-      <p>{data.openingParagraph}</p>
+      <p className="whitespace-pre-wrap">{data.openingParagraph}</p>
 
       <ul className="list-disc pl-5 space-y-2">
         {(data.bullets || []).map((b, i) => <li key={i}>{b}</li>)}
       </ul>
 
-      <p>{data.closingParagraph}</p>
+      <p className="whitespace-pre-wrap">{data.closingParagraph}</p>
 
       <div className="pt-2">
         <p>Best regards,</p>
