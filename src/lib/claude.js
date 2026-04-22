@@ -44,6 +44,17 @@ async function callClaude({ prompt, masterCV }) {
   return text;
 }
 
+function sanitizeDashes(value) {
+  if (typeof value === 'string') return value.replace(/[—–]/g, '-');
+  if (Array.isArray(value)) return value.map(sanitizeDashes);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = sanitizeDashes(v);
+    return out;
+  }
+  return value;
+}
+
 function extractJson(text) {
   // Strip markdown fences
   let clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -127,7 +138,7 @@ export async function generateApplication({
     prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') }),
     masterCV: cvText
   });
-  const cvData = extractJson(cvRaw);
+  const cvData = sanitizeDashes(extractJson(cvRaw));
   const cv = cvDataToText(cvData);
 
   onStep('research');
@@ -140,7 +151,7 @@ export async function generateApplication({
     }),
     masterCV: cvText
   });
-  const research = extractJson(researchRaw);
+  const research = sanitizeDashes(extractJson(researchRaw));
   const hiringManagerName =
     research.hiringManager && typeof research.hiringManager === 'object'
       ? research.hiringManager.name || null
@@ -159,7 +170,7 @@ export async function generateApplication({
     }),
     masterCV: cvText
   });
-  const clData = extractJson(clRaw);
+  const clData = sanitizeDashes(extractJson(clRaw));
   const coverLetter = clDataToText(clData);
 
   const hiringManagerDetails =

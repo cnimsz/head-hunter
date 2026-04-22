@@ -74,8 +74,9 @@ People feel safe saying "no" and anxious when pressured for "yes."
 ### Don't:
 - Repeat the CV verbatim
 - Use clichés ("passionate team player")
-- Be generic — every sentence should be specific to THIS job
+- Be generic - every sentence should be specific to THIS job
 - Exceed 12 lines
+- Use em-dashes (—) or en-dashes (–). Use a plain hyphen (-) and use it sparingly. Real people rarely use dashes in writing; em-dashes in particular are a well-known AI tell.
 
 ## Your Task
 
