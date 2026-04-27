@@ -1,290 +1,21 @@
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  AlignmentType,
-  BorderStyle,
-  LevelFormat
-} from 'docx';
+import { Document, Packer } from 'docx';
 import { saveAs } from 'file-saver';
 
-const FONT = 'Arial';
+import * as classic from './templates/classic.js';
+import * as modern from './templates/modern.js';
+import * as executive from './templates/executive.js';
 
-// docx sizes are in half-points; spacing is in 1/20 pt; indents are in twips (1/1440 inch)
-const pt = (p) => p * 2;
-const sp = (p) => p * 20;
-const INDENT_QUARTER_INCH = 360;
+const TEMPLATES = { classic, modern, executive };
 
-function run(text, opts = {}) {
-  return new TextRun({
-    text,
-    font: FONT,
-    size: opts.size ?? pt(10.5),
-    bold: opts.bold ?? false,
-    italics: opts.italics ?? false
-  });
+function pickTemplate(id) {
+  return TEMPLATES[id] || TEMPLATES.classic;
 }
 
-function para({ children, spacing, alignment, indent, border }) {
-  return new Paragraph({
-    children,
-    spacing,
-    alignment: alignment ?? AlignmentType.LEFT,
-    indent,
-    border
-  });
-}
-
-function blank(after = 0) {
-  return para({ children: [run('')], spacing: { after: sp(after) } });
-}
-
-// --- CV ------------------------------------------------------------------
-
-function cvName(text) {
-  return para({
-    children: [run(text, { size: pt(14), bold: true })],
-    spacing: { after: sp(6) }
-  });
-}
-
-function cvContact(text) {
-  return para({
-    children: [run(text, { size: pt(10) })],
-    spacing: { after: sp(12) }
-  });
-}
-
-function cvSectionHeader(text) {
-  return para({
-    children: [run(text.toUpperCase(), { size: pt(11), bold: true })],
-    spacing: { before: sp(12), after: sp(6) },
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 4, color: '808080', space: 1 }
-    }
-  });
-}
-
-function cvCompany(text, { firstInSection = false } = {}) {
-  return para({
-    children: [run(text, { size: pt(11), bold: true })],
-    spacing: { before: firstInSection ? 0 : sp(12), after: 0 }
-  });
-}
-
-function cvJobTitleLine(text) {
-  return para({
-    children: [run(text, { size: pt(11) })],
-    spacing: { after: sp(3) }
-  });
-}
-
-function cvBullet(text) {
-  return new Paragraph({
-    children: [run(text, { size: pt(10.5) })],
-    spacing: { after: sp(3) },
-    alignment: AlignmentType.LEFT,
-    numbering: { reference: 'cv-bullets', level: 0 }
-  });
-}
-
-function cvBody(text, opts = {}) {
-  return para({
-    children: [run(text, { size: pt(10.5), italics: opts.italics })],
-    spacing: { after: sp(6) }
-  });
-}
-
-function buildCVFromData(data) {
-  const out = [];
-
-  out.push(cvName(data.name || ''));
-  out.push(cvContact(data.contact || ''));
-
-  if (data.summary) {
-    out.push(cvBody(data.summary));
-  }
-
-  if (data.experience?.length) {
-    out.push(cvSectionHeader('EXPERIENCE'));
-    data.experience.forEach((role, i) => {
-      out.push(cvCompany(role.company, { firstInSection: i === 0 }));
-      out.push(cvJobTitleLine(role.titleLine));
-      for (const b of role.bullets || []) {
-        out.push(cvBullet(b));
-      }
-    });
-  }
-
-  if (data.education?.length) {
-    out.push(cvSectionHeader('EDUCATION'));
-    for (const e of data.education) {
-      out.push(cvBody(e));
-    }
-  }
-
-  if (data.skills?.length) {
-    out.push(cvSectionHeader('SKILLS'));
-    for (const s of data.skills) {
-      out.push(cvBody(s));
-    }
-  }
-
-  return out;
-}
-
-function isBullet(line) {
-  return /^\s*[-•*]\s+/.test(line);
-}
-
-function stripBullet(line) {
-  return line.replace(/^\s*[-•*]\s+/, '').trim();
-}
-
-// --- Cover Letter --------------------------------------------------------
-
-function buildCLFromData(data) {
-  const out = [];
-
-  // Sender name — 12pt bold
-  out.push(para({
-    children: [run(data.senderName || '', { size: pt(12), bold: true })],
-    spacing: { after: 0 }
-  }));
-
-  // Sender contact — 10pt
-  out.push(para({
-    children: [run(data.senderContact || '', { size: pt(10) })],
-    spacing: { after: sp(24) }
-  }));
-
-  // Date — 11pt
-  out.push(para({
-    children: [run(data.date || '', { size: pt(11) })],
-    spacing: { after: sp(24) }
-  }));
-
-  // Recipient block — 11pt
-  const r = data.recipient || {};
-  const recipientLines = [r.name, r.title, r.company, r.location].filter(Boolean);
-  recipientLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: { after: i === recipientLines.length - 1 ? sp(24) : 0 }
-    }));
-  });
-  if (!recipientLines.length) {
-    out.push(para({ children: [run('')], spacing: { after: sp(24) } }));
-  }
-
-  // Salutation — 11pt
-  out.push(para({
-    children: [run(data.salutation || 'Dear Hiring Team,', { size: pt(11) })],
-    spacing: { after: sp(12) }
-  }));
-
-  // Opening paragraph — 11pt (may contain \n — split into one paragraph per line)
-  const openingLines = (data.openingParagraph || '').split('\n');
-  openingLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: { after: i === openingLines.length - 1 ? sp(12) : 0 }
-    }));
-  });
-
-  // Bullets — 11pt with numbering
-  for (const b of data.bullets || []) {
-    out.push(new Paragraph({
-      children: [run(b, { size: pt(11) })],
-      spacing: { after: sp(6) },
-      alignment: AlignmentType.LEFT,
-      numbering: { reference: 'cl-bullets', level: 0 }
-    }));
-  }
-
-  // Closing paragraph — 11pt, 12pt gap above to separate from bullets (may contain \n)
-  const closingLines = (data.closingParagraph || '').split('\n');
-  closingLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: {
-        before: i === 0 ? sp(12) : 0,
-        after: i === closingLines.length - 1 ? sp(12) : sp(6)
-      }
-    }));
-  });
-
-  // Closing line — 11pt
-  out.push(para({
-    children: [run('Best regards,', { size: pt(11) })],
-    spacing: { after: sp(24) }
-  }));
-
-  // Signature — 11pt bold
-  out.push(para({
-    children: [run(data.signatureName || data.senderName || '', { size: pt(11), bold: true })],
-    spacing: { after: 0 }
-  }));
-
-  return out;
-}
-
-// --- Document wrapper ----------------------------------------------------
-
-function buildDoc(children) {
+function buildDocFrom(result) {
   return new Document({
-    styles: {
-      default: {
-        document: {
-          run: { font: FONT, size: pt(10.5) },
-          paragraph: { spacing: { line: 276 } } // 1.15 line spacing
-        }
-      }
-    },
-    numbering: {
-      config: [
-        {
-          reference: 'cv-bullets',
-          levels: [
-            {
-              level: 0,
-              format: LevelFormat.BULLET,
-              text: '\u2022',
-              alignment: AlignmentType.LEFT,
-              style: {
-                paragraph: { indent: { left: INDENT_QUARTER_INCH, hanging: INDENT_QUARTER_INCH } },
-                run: { font: FONT }
-              }
-            }
-          ]
-        },
-        {
-          reference: 'cl-bullets',
-          levels: [
-            {
-              level: 0,
-              format: LevelFormat.BULLET,
-              text: '\u2022',
-              alignment: AlignmentType.LEFT,
-              style: {
-                paragraph: { indent: { left: INDENT_QUARTER_INCH, hanging: INDENT_QUARTER_INCH } },
-                run: { font: FONT }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    sections: [{
-      properties: {
-        page: {
-          size: { width: 12240, height: 15840 }, // US Letter
-          margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } // 1"
-        }
-      },
-      children
-    }]
+    styles: result.styles,
+    numbering: result.numbering,
+    sections: result.sections
   });
 }
 
@@ -296,18 +27,20 @@ function suffix({ companyAndRole } = {}) {
   return companyAndRole ? `_${safeFilename(companyAndRole)}` : '';
 }
 
-export async function generateCVDocx(contentOrData, candidateName = 'CV', meta = {}) {
-  const children = buildCVFromData(contentOrData);
-  const doc = buildDoc(children);
+export async function generateCVDocx(data, candidateName = 'CV', meta = {}) {
+  const tpl = pickTemplate(meta.template);
+  const result = tpl.renderCV(data);
+  const doc = buildDocFrom(result);
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `${safeFilename(candidateName)}_CV${suffix(meta)}.docx`);
   return blob;
 }
 
-export async function generateCoverLetterDocx(contentOrData, candidateName = 'Candidate', meta = {}) {
-  const children = buildCLFromData(contentOrData);
-  const doc = buildDoc(children);
+export async function generateCoverLetterDocx(data, candidateName = 'Candidate', meta = {}) {
+  const tpl = pickTemplate(meta.template);
+  const result = tpl.renderCL(data);
+  const doc = buildDocFrom(result);
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${safeFilename(candidateName)}_CoverLetter${suffix(meta)}.docx`);
+  saveAs(blob, `${safeFilename(candidateName)}_CL${suffix(meta)}.docx`);
   return blob;
 }

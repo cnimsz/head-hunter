@@ -122,11 +122,16 @@ Return a single JSON object with this exact structure. No text before or after t
 
 {
   "name": "Full Name",
+  "title": "Target Role · Adjacent Role · Adjacent Role",
   "contact": "City, Country | +phone | email | linkedin.com/in/handle",
   "summary": "2-3 sentence professional summary.",
   "experience": [
     {
       "company": "Company Name",
+      "title": "Job Title",
+      "location": "City, Country",
+      "startDate": "Mon YYYY",
+      "endDate": "Mon YYYY",
       "titleLine": "Job Title | Location | Month Year – Month Year",
       "bullets": [
         "Achievement bullet starting with action verb",
@@ -139,6 +144,15 @@ Return a single JSON object with this exact structure. No text before or after t
   ],
   "skills": [
     "Category: keyword, keyword, keyword, keyword"
+  ],
+  "certifications": [
+    "Certification Name (Issuing Body, Year if relevant)"
+  ],
+  "publicSpeaking": [
+    "Event or Venue — Topic or Role"
+  ],
+  "startupAchievements": [
+    { "title": "Short headline", "body": "1-2 sentence description with a number." }
   ]
 }
 
@@ -147,6 +161,10 @@ RULES:
 - skills: maximum 3 entries, each is "Category: keyword, keyword, ..."
 - education: 1-2 entries
 - summary: 2-3 sentences, no more
+- "title" at the top level is a short professional subline (e.g. "Chief Operating Officer · Chief Strategy Officer"). Include it if the master CV supports a clear senior target role ladder; otherwise omit.
+- For each experience entry, populate BOTH the atomic fields (title, location, startDate, endDate) AND the legacy "titleLine" string so older renderers still work. "titleLine" should read "Title | Location | StartDate – EndDate". Use "Present" as endDate when the role is current.
+- certifications, publicSpeaking, startupAchievements are OPTIONAL arrays. Only include a field if the master CV clearly contains that type of content. Omit the key entirely if there is nothing to list — do not emit empty arrays.
+- Cap certifications at 6 entries, publicSpeaking at 6 entries, startupAchievements at 3 entries (each body ≤ 2 short sentences).
 - Return ONLY valid JSON. No markdown fences, no extra text, no pipe characters outside of string values.
 - Pipe characters (|) are allowed INSIDE string values like contact and titleLine.
 - Ensure all strings are properly escaped for JSON.

@@ -104,13 +104,25 @@ function clDataToText(d) {
   return lines.join('\n').trim();
 }
 
+function roleSublineText(role) {
+  if (!role) return '';
+  const dates = role.startDate && role.endDate
+    ? `${role.startDate} - ${role.endDate}`
+    : (role.startDate || role.endDate || '');
+  const parts = [role.title, role.location, dates].filter(Boolean);
+  if (parts.length) return parts.join(' · ');
+  return role.titleLine || '';
+}
+
 function cvDataToText(d) {
   const lines = [];
-  lines.push(d.name, d.contact, '');
+  lines.push(d.name);
+  if (d.title) lines.push(d.title);
+  lines.push(d.contact, '');
   if (d.summary) lines.push(d.summary, '');
   lines.push('EXPERIENCE', '');
   for (const role of d.experience || []) {
-    lines.push(role.company, role.titleLine);
+    lines.push(role.company, roleSublineText(role));
     for (const b of role.bullets || []) lines.push(`• ${b}`);
     lines.push('');
   }
@@ -122,6 +134,24 @@ function cvDataToText(d) {
   if (d.skills?.length) {
     lines.push('SKILLS');
     for (const s of d.skills) lines.push(s);
+    lines.push('');
+  }
+  if (d.certifications?.length) {
+    lines.push('CERTIFICATIONS');
+    for (const c of d.certifications) lines.push(`• ${c}`);
+    lines.push('');
+  }
+  if (d.publicSpeaking?.length) {
+    lines.push('PUBLIC SPEAKING AND LOBBYING');
+    for (const p of d.publicSpeaking) lines.push(`• ${p}`);
+    lines.push('');
+  }
+  if (d.startupAchievements?.length) {
+    lines.push('STARTUP ACHIEVEMENTS');
+    for (const a of d.startupAchievements) {
+      lines.push(a.title || '');
+      if (a.body) lines.push(a.body);
+    }
   }
   return lines.join('\n').trim();
 }

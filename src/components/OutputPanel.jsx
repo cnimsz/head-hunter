@@ -10,6 +10,22 @@ const TABS = [
   { id: 'linkedIn', label: 'Research & Outreach' }
 ];
 
+const TEMPLATES = [
+  { id: 'classic', label: 'Classic' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'executive', label: 'Executive' }
+];
+
+const TEMPLATE_KEY = 'cv-toolkit:template';
+
+function readTemplate() {
+  try {
+    const v = localStorage.getItem(TEMPLATE_KEY);
+    if (TEMPLATES.some((t) => t.id === v)) return v;
+  } catch {}
+  return 'classic';
+}
+
 export default function OutputPanel({ result, error, companyName }) {
   const [tab, setTab] = useState('cv');
   const [copied, setCopied] = useState(false);
@@ -17,6 +33,7 @@ export default function OutputPanel({ result, error, companyName }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedCvData, setEditedCvData] = useState(null);
   const [editedClData, setEditedClData] = useState(null);
+  const [template, setTemplate] = useState(readTemplate);
 
   useEffect(() => {
     setIsEditing(false);
@@ -58,13 +75,19 @@ export default function OutputPanel({ result, error, companyName }) {
     if (tab === 'cv') {
       const data = activeCvData;
       const name = data?.name || firstLine(result.cv) || 'Candidate';
-      await generateCVDocx(data, name, { companyAndRole });
+      await generateCVDocx(data, name, { companyAndRole, template });
     }
     if (tab === 'coverLetter') {
       const data = activeClData;
       const name = data?.senderName || data?.signatureName || firstLine(result.cv) || 'Candidate';
-      await generateCoverLetterDocx(data, name, { companyAndRole });
+      await generateCoverLetterDocx(data, name, { companyAndRole, template });
     }
+  }
+
+  function handleTemplateChange(e) {
+    const v = e.target.value;
+    setTemplate(v);
+    try { localStorage.setItem(TEMPLATE_KEY, v); } catch {}
   }
 
   const canEdit = result && tab !== 'linkedIn' &&
@@ -89,7 +112,22 @@ export default function OutputPanel({ result, error, companyName }) {
           ))}
         </div>
         {result && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {tab !== 'linkedIn' && (
+              <label className="flex items-center gap-1 text-xs text-slate-500">
+                <span className="sr-only">Template</span>
+                <select
+                  value={template}
+                  onChange={handleTemplateChange}
+                  className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+                  title="Visual template for the downloaded .docx"
+                >
+                  {TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>{t.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {canEdit && (
               isEditing ? (
                 <>
@@ -186,11 +224,22 @@ export default function OutputPanel({ result, error, companyName }) {
   );
 }
 
+function roleSubline(role) {
+  if (!role) return '';
+  const dates = role.startDate && role.endDate
+    ? `${role.startDate} – ${role.endDate}`
+    : (role.startDate || role.endDate || '');
+  const parts = [role.title, role.location, dates].filter(Boolean);
+  if (parts.length) return parts.join(' · ');
+  return role.titleLine || '';
+}
+
 function CVDisplay({ data }) {
   if (!data) return null;
   return (
     <div className="space-y-3 font-sans text-sm">
       <h1 className="text-lg font-bold">{data.name}</h1>
+      {data.title && <p className="italic text-slate-600 dark:text-slate-300">{data.title}</p>}
       <p className="text-xs text-slate-500 dark:text-slate-400">{data.contact}</p>
       {data.summary && <p className="text-slate-700 dark:text-slate-300">{data.summary}</p>}
 
@@ -200,7 +249,7 @@ function CVDisplay({ data }) {
           {data.experience.map((role, i) => (
             <div key={i} className="mb-3">
               <p className="font-bold">{role.company}</p>
-              <p className="text-slate-600 dark:text-slate-400">{role.titleLine}</p>
+              <p className="text-slate-600 dark:text-slate-400">{roleSubline(role)}</p>
               <ul className="list-disc pl-5 mt-1 space-y-0.5">
                 {(role.bullets || []).map((b, j) => <li key={j}>{b}</li>)}
               </ul>
@@ -220,6 +269,36 @@ function CVDisplay({ data }) {
         <>
           <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Skills</h2>
           {data.skills.map((s, i) => <p key={i}>{s}</p>)}
+        </>
+      )}
+
+      {data.certifications?.length > 0 && (
+        <>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Certifications</h2>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {data.certifications.map((c, i) => <li key={i}>{c}</li>)}
+          </ul>
+        </>
+      )}
+
+      {data.publicSpeaking?.length > 0 && (
+        <>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Public Speaking and Lobbying</h2>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {data.publicSpeaking.map((p, i) => <li key={i}>{p}</li>)}
+          </ul>
+        </>
+      )}
+
+      {data.startupAchievements?.length > 0 && (
+        <>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Startup Achievements</h2>
+          {data.startupAchievements.map((a, i) => (
+            <div key={i} className="mb-2">
+              <p className="font-bold">{a.title}</p>
+              {a.body && <p>{a.body}</p>}
+            </div>
+          ))}
         </>
       )}
     </div>
