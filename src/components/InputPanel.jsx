@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { extractTextFromFile } from '../lib/cvParser.js';
-import { getMasterCV, saveMasterCV } from '../lib/storage.js';
+import { getMasterCV, saveMasterCV, getConsent, setConsent } from '../lib/storage.js';
 import { updateProfileFromText } from '../lib/profile.js';
 import MasterCVCompiler from './MasterCVCompiler.jsx';
 
@@ -14,6 +14,7 @@ const STEP_LABEL = {
 
 export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
   const initialSaved = getMasterCV();
+  const [consent, setConsentState] = useState(getConsent());
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [cvFile, setCvFile] = useState(null);
@@ -25,12 +26,31 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [savedCV, setSavedCV] = useState(initialSaved);
 
+  function handleConsentChange(checked) {
+    if (!checked && consent) {
+      const ok = window.confirm(
+        'Withdrawing consent will permanently delete your saved Master CV, profile, and learned style preferences from this browser. Continue?'
+      );
+      if (!ok) return;
+    }
+    setConsent(checked);
+    setConsentState(checked);
+    if (!checked) {
+      setSavedCV(null);
+      setUseSavedCV(false);
+      setCvFile(null);
+      setCvFileText('');
+      setParseError(null);
+    }
+  }
+
   const canGenerate = useMemo(() => {
+    if (!consent) return false;
     if (!jobDescription.trim()) return false;
     if (useSavedCV && savedCV?.text) return true;
     if (cvFileText) return true;
     return false;
-  }, [jobDescription, useSavedCV, savedCV, cvFileText]);
+  }, [consent, jobDescription, useSavedCV, savedCV, cvFileText]);
 
   async function handleFile(e) {
     const f = e.target.files?.[0];
@@ -87,16 +107,33 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
           <button
             type="button"
             onClick={() => setCompilerOpen(true)}
-            className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+            disabled={!consent}
+            className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Compile from .zip
           </button>
         </div>
+
+        <div className="mb-3 p-3 rounded border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => handleConsentChange(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-slate-700 dark:text-slate-200">
+              <strong>Required.</strong> I consent to (1) this app storing my Master CV, profile details, and learned style preferences in this browser's local storage, and (2) my job description and CV text being sent to Anthropic (via a Supabase proxy) as necessary for the app to generate tailored documents. Unchecking this box will permanently delete all data this app has stored in this browser.
+            </span>
+          </label>
+        </div>
+
         {savedCV && (
-          <label className="flex items-center gap-2 text-sm mb-2">
+          <label className={`flex items-center gap-2 text-sm mb-2 ${!consent ? 'opacity-50' : ''}`}>
             <input
               type="checkbox"
               checked={useSavedCV}
+              disabled={!consent}
               onChange={(e) => setUseSavedCV(e.target.checked)}
             />
             Use saved CV: <span className="font-medium">{savedCV.filename}</span>
@@ -108,12 +145,14 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
               type="file"
               accept=".pdf,.docx,.txt,.md"
               onChange={handleFile}
-              className="text-sm"
+              disabled={!consent}
+              className="text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+            <label className={`flex items-center gap-2 text-xs text-slate-500 mt-1 ${!consent ? 'opacity-50' : ''}`}>
               <input
                 type="checkbox"
                 checked={saveThisCV}
+                disabled={!consent}
                 onChange={(e) => setSaveThisCV(e.target.checked)}
               />
               Save this CV for next time
