@@ -125,11 +125,21 @@ Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLette
 ```js
 {
   companyBrief: string,     // 12 lines max
-  hiringManager: { name, title, confidence: 'high'|'medium'|'low', rationale },
+  hiringManager: {
+    name,                   // string | null — null when no person verified
+    title,                  // string — supervisor title (verified or inferred)
+    linkedInUrl,            // string | null — must match https://www.linkedin.com/(in|pub)/<slug>
+    confidence: 'high'|'medium'|'low',
+    rationale
+  },
   linkedInMessage: string,  // <300 characters
   linkedInCharCount: number
 }
 ```
+
+**Web search:** the research call (and only that call) passes a `tools` array containing Anthropic's hosted `web_search_20250305` server tool with `max_uses: 8`. The edge function allow-lists which tool types it forwards (see `ALLOWED_TOOL_TYPES` in `supabase/functions/head-hunter-claude/index.ts`). The OutputPanel validates `linkedInUrl` against the canonical `linkedin.com/(in|pub)/<slug>` pattern before rendering the link.
+
+Cost: ~$0.30–$0.40 per research call at Sonnet 4.6 pricing. Each search costs $0.01, but the larger driver is input-token inflation — every search result is appended to the message context, pushing a single research call from ~3K input tokens to ~80K+. Latency ~30–45s when the model uses several searches. If cost or latency becomes an issue, lower `max_uses` in `src/lib/claude.js` (currently 8) or switch the research call only to Haiku 4.5 (would require a second `MODEL` constant and extending the edge function model allow-list usage).
 
 ## Key Patterns
 

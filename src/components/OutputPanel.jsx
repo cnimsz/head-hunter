@@ -346,6 +346,18 @@ function firstLine(s) {
   return (s || '').split(/\r?\n/)[0]?.trim() || '';
 }
 
+function isLinkedInProfileUrl(url) {
+  if (typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return false;
+    if (!/(^|\.)linkedin\.com$/i.test(u.hostname)) return false;
+    return /^\/(in|pub)\/[^/]+\/?$/i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function LinkedInView({ result }) {
   const msg = result.linkedInMessage || '';
   const charCount = result.linkedInCharCount ?? msg.length;
@@ -370,6 +382,21 @@ function LinkedInView({ result }) {
           <dl className="text-sm grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
             {hm.name && (<><dt className="text-slate-500">Name</dt><dd>{hm.name}</dd></>)}
             {hm.title && (<><dt className="text-slate-500">Title</dt><dd>{hm.title}</dd></>)}
+            {isLinkedInProfileUrl(hm.linkedInUrl) && (
+              <>
+                <dt className="text-slate-500">LinkedIn</dt>
+                <dd className="break-all">
+                  <a
+                    href={hm.linkedInUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {hm.linkedInUrl}
+                  </a>
+                </dd>
+              </>
+            )}
             {hm.confidence && (<><dt className="text-slate-500">Confidence</dt><dd>{hm.confidence}</dd></>)}
             {hm.rationale && (<><dt className="text-slate-500">Rationale</dt><dd>{hm.rationale}</dd></>)}
           </dl>

@@ -8,13 +8,14 @@ export const MAX_TOKENS = 8000;
 export const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
 export const APP_TOKEN = import.meta.env?.VITE_HH_APP_TOKEN || '';
 
-async function callClaude({ prompt, masterCV }) {
+async function callClaude({ prompt, masterCV, tools }) {
   const payload = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
     messages: [{ role: 'user', content: prompt }]
   };
   if (masterCV) payload.masterCV = masterCV;
+  if (tools) payload.tools = tools;
 
   let res;
   try {
@@ -39,7 +40,12 @@ async function callClaude({ prompt, masterCV }) {
   }
 
   const data = await res.json();
-  const text = data?.content?.[0]?.text;
+  // When server tools (e.g. web_search) are used, the response contains a
+  // mix of tool-use, tool-result, and text blocks. The model's final answer
+  // is the LAST text block. Without tools, that's still content[0].
+  const blocks = Array.isArray(data?.content) ? data.content : [];
+  const textBlocks = blocks.filter((b) => b?.type === 'text' && typeof b.text === 'string');
+  const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : '';
   if (!text) throw new Error('Malformed response from Claude (no text content).');
   return text;
 }
@@ -179,7 +185,8 @@ export async function generateApplication({
       cvHighlights: cv.slice(0, 2000),
       learnings: formatLearningsBlock('linkedIn')
     }),
-    masterCV: cvText
+    masterCV: cvText,
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }]
   });
   const research = sanitizeDashes(extractJson(researchRaw));
   const hiringManagerName =

@@ -12,6 +12,15 @@ const ALLOWED_MODELS = new Set([
   "claude-opus-4-7",
 ]);
 
+// Server tools we forward to Anthropic. Keep this allow-list tight — anything
+// unrecognized is rejected so a compromised client cannot enable arbitrary
+// server tools that bill against our key.
+const ALLOWED_TOOL_TYPES = new Set([
+  "web_search_20250305",
+]);
+const MAX_TOOLS = 4;
+const MAX_TOOL_USES = 10;
+
 const MAX_TOKENS_CAP = 8000;
 const MAX_BODY_BYTES = 200_000;
 
@@ -97,7 +106,7 @@ serve(async (req) => {
     }
 
     const body = JSON.parse(rawBody);
-    const { model, max_tokens, messages, masterCV } = body;
+    const { model, max_tokens, messages, masterCV, tools } = body;
 
     if (typeof model !== "string" || !ALLOWED_MODELS.has(model)) {
       return jsonError(400, "Unsupported model", corsHeaders);
@@ -109,6 +118,40 @@ serve(async (req) => {
       Number.isFinite(max_tokens) ? max_tokens : MAX_TOKENS_CAP,
       MAX_TOKENS_CAP,
     );
+
+    let safeTools: unknown = undefined;
+    if (tools !== undefined && tools !== null) {
+      if (!Array.isArray(tools) || tools.length === 0) {
+        return jsonError(400, "tools must be a non-empty array", corsHeaders);
+      }
+      if (tools.length > MAX_TOOLS) {
+        return jsonError(400, "Too many tools requested", corsHeaders);
+      }
+      const sanitized: unknown[] = [];
+      for (const t of tools) {
+        if (!t || typeof t !== "object") {
+          return jsonError(400, "Invalid tool entry", corsHeaders);
+        }
+        const type = (t as Record<string, unknown>).type;
+        if (typeof type !== "string" || !ALLOWED_TOOL_TYPES.has(type)) {
+          return jsonError(400, "Unsupported tool type", corsHeaders);
+        }
+        if (type === "web_search_20250305") {
+          const name = (t as Record<string, unknown>).name;
+          const maxUses = (t as Record<string, unknown>).max_uses;
+          const cappedMaxUses = Math.min(
+            Number.isFinite(maxUses) ? Number(maxUses) : MAX_TOOL_USES,
+            MAX_TOOL_USES,
+          );
+          sanitized.push({
+            type,
+            name: typeof name === "string" ? name : "web_search",
+            max_uses: cappedMaxUses,
+          });
+        }
+      }
+      safeTools = sanitized;
+    }
 
     // When masterCV is provided separately, restructure messages to enable
     // prompt caching. The master CV is stable across the 3-call pipeline,
@@ -133,6 +176,13 @@ serve(async (req) => {
       ];
     }
 
+    const upstreamPayload: Record<string, unknown> = {
+      model,
+      max_tokens: cappedMaxTokens,
+      messages: finalMessages,
+    };
+    if (safeTools) upstreamPayload.tools = safeTools;
+
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -140,7 +190,7 @@ serve(async (req) => {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({ model, max_tokens: cappedMaxTokens, messages: finalMessages }),
+      body: JSON.stringify(upstreamPayload),
     });
 
     const responseBody = await res.text();

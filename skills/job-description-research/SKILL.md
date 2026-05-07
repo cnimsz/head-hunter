@@ -143,16 +143,18 @@ Find the **actual supervisor** — the person this role will report to day-to-da
 
 ### Output: Hiring Manager Identification
 
+The research call has access to Anthropic's hosted `web_search` server tool. Use it to verify a real, currently-employed individual and to capture their LinkedIn profile URL verbatim from search results. Never construct a LinkedIn URL from a name — only return URLs that appeared in a search hit. If web search does not yield a confirmed individual, return `name: null` and `linkedInUrl: null` rather than guessing.
+
 **If confident (one clear answer):**
 ```
 HIRING MANAGER IDENTIFIED
 
 Name: [Full Name]
 Title: [Their title]
-LinkedIn: [URL]
+LinkedIn: [URL — must match https://www.linkedin.com/(in|pub)/<slug>]
 Confidence: High
 
-Rationale: [1-2 sentences on why this is likely the supervisor]
+Rationale: [1-2 sentences citing the specific search evidence]
 
 → Proceeding to cover letter addressed to [Mr./Ms. Last Name]
 ```
