@@ -28,6 +28,12 @@ const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimit = new Map<string, { count: number; resetAt: number }>();
 
+const SESSION_TTL_MS = 10 * 60 * 1000;
+const SESSION_FUTURE_SLOP_MS = 60_000;
+
+const TURNSTILE_VERIFY_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimit.get(ip);
@@ -51,16 +57,113 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
     origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-hh-token",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, cf-turnstile-token, x-session-token",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Expose-Headers": "x-session-token",
   };
 }
 
-function jsonError(status: number, message: string, corsHeaders: Record<string, string>) {
+function jsonError(
+  status: number,
+  message: string,
+  corsHeaders: Record<string, string>,
+) {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+let cachedHmacKey: CryptoKey | null = null;
+
+async function getHmacKey(): Promise<CryptoKey> {
+  if (cachedHmacKey) return cachedHmacKey;
+  const secret = Deno.env.get("HEAD_HUNTER_SESSION_SECRET");
+  if (!secret) throw new Error("HEAD_HUNTER_SESSION_SECRET not set");
+  cachedHmacKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+  return cachedHmacKey;
+}
+
+function b64url(bytes: ArrayBuffer): string {
+  const bin = String.fromCharCode(...new Uint8Array(bytes));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromB64url(s: string): Uint8Array {
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function issueSessionToken(ip: string): Promise<string> {
+  const key = await getHmacKey();
+  const ts = Date.now();
+  const payload = `${ts}.${ip}`;
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(payload),
+  );
+  return `v1.${ts}.${b64url(sig)}`;
+}
+
+async function verifySessionToken(token: string, ip: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "v1") return false;
+  const ts = Number(parts[1]);
+  if (!Number.isFinite(ts)) return false;
+  const now = Date.now();
+  if (now - ts > SESSION_TTL_MS) return false;
+  if (ts - now > SESSION_FUTURE_SLOP_MS) return false;
+
+  let sigBytes: Uint8Array;
+  try {
+    sigBytes = fromB64url(parts[2]);
+  } catch {
+    return false;
+  }
+
+  const key = await getHmacKey();
+  return await crypto.subtle.verify(
+    "HMAC",
+    key,
+    sigBytes,
+    new TextEncoder().encode(`${ts}.${ip}`),
+  );
+}
+
+async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secret) {
+    console.error("TURNSTILE_SECRET_KEY not set");
+    return false;
+  }
+  const form = new URLSearchParams();
+  form.set("secret", secret);
+  form.set("response", token);
+  if (ip && ip !== "unknown") form.set("remoteip", ip);
+
+  try {
+    const res = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    const data = await res.json();
+    return data?.success === true;
+  } catch (e) {
+    console.error("Turnstile siteverify failed:", e);
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -74,16 +177,23 @@ serve(async (req) => {
     return jsonError(405, "Method not allowed", corsHeaders);
   }
 
-  const appToken = Deno.env.get("HEAD_HUNTER_APP_TOKEN");
-  if (!appToken) {
-    console.error("Server misconfiguration: HEAD_HUNTER_APP_TOKEN not set");
-    return jsonError(500, "Server misconfigured", corsHeaders);
-  }
-  if (req.headers.get("x-hh-token") !== appToken) {
-    return jsonError(401, "Unauthorized", corsHeaders);
+  const ip = getClientIp(req);
+
+  const turnstileToken = req.headers.get("cf-turnstile-token");
+  const sessionToken = req.headers.get("x-session-token");
+
+  let issueNewSession = false;
+  if (turnstileToken) {
+    const ok = await verifyTurnstile(turnstileToken, ip);
+    if (!ok) return jsonError(401, "Bot challenge failed", corsHeaders);
+    issueNewSession = true;
+  } else if (sessionToken) {
+    const ok = await verifySessionToken(sessionToken, ip);
+    if (!ok) return jsonError(401, "Session expired or invalid", corsHeaders);
+  } else {
+    return jsonError(401, "Missing bot challenge or session token", corsHeaders);
   }
 
-  const ip = getClientIp(req);
   if (!checkRateLimit(ip)) {
     return jsonError(429, "Too many requests. Try again shortly.", corsHeaders);
   }
@@ -194,9 +304,16 @@ serve(async (req) => {
     });
 
     const responseBody = await res.text();
+    const responseHeaders: Record<string, string> = {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    };
+    if (issueNewSession && res.ok) {
+      responseHeaders["x-session-token"] = await issueSessionToken(ip);
+    }
     return new Response(responseBody, {
       status: res.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: responseHeaders,
     });
   } catch (e) {
     console.error("Generation failed:", e);

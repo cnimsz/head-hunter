@@ -10,7 +10,8 @@ All processing runs client-side in the browser — no backend.
 - **Document generation:** `docx` + `file-saver`
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
 - **API:** Anthropic Messages API — claude-sonnet-4-6, proxied via Supabase Edge Function (`head-hunter-claude`)
-- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` (Anthropic API key) and `HEAD_HUNTER_APP_TOKEN` (shared app secret) secrets
+- **Bot challenge:** Cloudflare Turnstile gates the edge function. Site key is public (in the bundle); secret key + HMAC session secret live as Supabase secrets.
+- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` (Anthropic API key), `TURNSTILE_SECRET_KEY`, and `HEAD_HUNTER_SESSION_SECRET` secrets
 - **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, and `learnings:*`
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
@@ -57,7 +58,8 @@ head-hunter/
 │   │   ├── EditableCoverLetter.jsx     ← Structured cover letter editing form
 │   │   ├── FeedbackModal.jsx           ← Upload revised docs → extract style rules
 │   │   ├── MasterCVCompiler.jsx        ← Upload .zip of CVs → synthesize master CV
-│   │   └── SettingsModal.jsx           ← Saved CV management
+│   │   ├── SettingsModal.jsx           ← Saved CV management
+│   │   └── Turnstile.jsx               ← Cloudflare Turnstile widget wrapper
 │   ├── lib/
 │   │   ├── claude.js                   ← API calls, generation pipeline, JSON extraction
 │   │   ├── cvParser.js                 ← PDF/DOCX/TXT text extraction (client-side)
@@ -164,31 +166,35 @@ Cost: ~$0.30–$0.40 per research call at Sonnet 4.6 pricing. Each search costs 
 
 ## API Configuration
 
-All Claude API calls are proxied through a Supabase Edge Function:
+All Claude API calls are proxied through a Supabase Edge Function. Auth flow:
+
+1. User solves a Cloudflare Turnstile challenge in the browser → Turnstile token captured in client state.
+2. **Call 1 (CV writer)** sends header `cf-turnstile-token: <token>`. Edge function verifies with Cloudflare's siteverify endpoint. On success, processes the request and returns header `x-session-token: v1.<ts>.<hmac>` (HMAC-SHA256 of `${ts}.${ip}`, signed with `HEAD_HUNTER_SESSION_SECRET`, 10-min TTL).
+3. **Calls 2 & 3 (research, cover letter)** send the session token as `x-session-token`. Edge function verifies HMAC + TTL + IP match. No Cloudflare round-trip.
 
 ```js
 edge_function: 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude'
 model: 'claude-sonnet-4-6'
 max_tokens: 8000
-// Anthropic API key stored as Supabase secret HEAD_HUNTER — never exposed to the client.
-// Every client request must send header `x-hh-token: <VITE_HH_APP_TOKEN>`. The edge function
-// verifies it matches the `HEAD_HUNTER_APP_TOKEN` Supabase secret. Requests that omit or
-// mis-match the token get 401. This stops curl-the-URL abuse of the Anthropic budget.
+// Anthropic key stored as Supabase secret HEAD_HUNTER — never exposed to the client.
+// First call: cf-turnstile-token header. Subsequent calls in the same generation:
+// x-session-token header. Anything else → 401.
 ```
 
 Edge function also enforces: model allow-list (sonnet-4-6, haiku-4-5, opus-4-7), `max_tokens` ≤ 8000, body ≤ 200KB, 20 req/min per IP (in-memory, per-isolate).
 
-Error handling: 401 → token mismatch, 413 → body too large, 429 → rate limit, plus network and JSON parse errors.
+Error handling: 401 → bot challenge failed or session expired/invalid, 413 → body too large, 429 → rate limit, plus network and JSON parse errors.
 
 ## Environment variables
 
 | Name | Where | Purpose |
 |------|-------|---------|
 | `HEAD_HUNTER` | Supabase secret | Anthropic API key |
-| `HEAD_HUNTER_APP_TOKEN` | Supabase secret | Shared app secret; must equal `VITE_HH_APP_TOKEN` |
-| `VITE_HH_APP_TOKEN` | `.env.local` (dev) + Vercel env (prod) | Sent as `x-hh-token` header by the client |
+| `TURNSTILE_SECRET_KEY` | Supabase secret | Cloudflare Turnstile secret. Test value: `1x0000000000000000000000000000000AA` (always passes) |
+| `HEAD_HUNTER_SESSION_SECRET` | Supabase secret | HMAC key for session tokens. Generate: `openssl rand -hex 32` |
+| `VITE_TURNSTILE_SITE_KEY` | `.env.local` (dev) + Vercel env (prod) | Cloudflare Turnstile site key. Public by design — embedded in client bundle. Test value: `1x00000000000000000000AA` (always passes) |
 
-Rotate the app token: set a new value in both Supabase and Vercel, redeploy both. Old builds using the old token will start getting 401s.
+Rotate the session secret: set a new `HEAD_HUNTER_SESSION_SECRET` in Supabase. Sessions in flight invalidate immediately; no client redeploy needed. The site key only needs rotation if the Cloudflare Turnstile site is replaced.
 
 ## Model Configuration
 
@@ -241,6 +247,7 @@ Always run `/test-pipeline` after:
 | Styling | Tailwind only | No custom CSS to debug |
 | Output format | Structured JSON → forms | Enables editing + clean DOCX |
 | Learnings | localStorage rules | Persists across sessions, no backend |
+| Edge function auth | Turnstile + 10-min HMAC session token | Replaced static `VITE_HH_APP_TOKEN` (which was bundled into client JS and effectively public). Site key is *meant* to be public; the secret never leaves Supabase. One challenge per generation; calls 2/3 use a server-issued session token to avoid mid-pipeline challenges. |
 
 ## Known Gotchas
 

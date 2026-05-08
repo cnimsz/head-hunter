@@ -6,9 +6,8 @@ import { formatLearningsBlock } from './learnings.js';
 export const MODEL = 'claude-sonnet-4-6';
 export const MAX_TOKENS = 8000;
 export const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
-export const APP_TOKEN = import.meta.env?.VITE_HH_APP_TOKEN || '';
 
-async function callClaude({ prompt, masterCV, tools }) {
+async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken }) {
   const payload = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
@@ -17,14 +16,16 @@ async function callClaude({ prompt, masterCV, tools }) {
   if (masterCV) payload.masterCV = masterCV;
   if (tools) payload.tools = tools;
 
+  const headers = { 'Content-Type': 'application/json' };
+  if (turnstileToken) headers['cf-turnstile-token'] = turnstileToken;
+  else if (sessionToken) headers['x-session-token'] = sessionToken;
+  else throw new Error('Missing bot challenge token. Solve the challenge and retry.');
+
   let res;
   try {
     res = await fetch(EDGE_FN_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-hh-token': APP_TOKEN
-      },
+      headers,
       body: JSON.stringify(payload)
     });
   } catch (e) {
@@ -33,11 +34,13 @@ async function callClaude({ prompt, masterCV, tools }) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('App token rejected by server. Check your deployment config.');
+    if (res.status === 401) throw new Error('Bot challenge failed or session expired. Refresh and retry.');
     if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
     if (res.status === 413) throw new Error('Your CV or job description is too long. Trim and retry.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
+
+  const newSession = res.headers.get('x-session-token') || null;
 
   const data = await res.json();
   // When server tools (e.g. web_search) are used, the response contains a
@@ -47,7 +50,7 @@ async function callClaude({ prompt, masterCV, tools }) {
   const textBlocks = blocks.filter((b) => b?.type === 'text' && typeof b.text === 'string');
   const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : '';
   if (!text) throw new Error('Malformed response from Claude (no text content).');
-  return text;
+  return { text, sessionToken: newSession };
 }
 
 function sanitizeDashes(value) {
@@ -167,18 +170,24 @@ export async function generateApplication({
   cvText,
   companyName,
   profile = null,
+  turnstileToken,
   onStep = () => {}
 }) {
+  if (!turnstileToken) throw new Error('Bot challenge required. Solve the challenge and retry.');
+
   onStep('cv');
-  const cvRaw = await callClaude({
+  const cvCall = await callClaude({
     prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') }),
-    masterCV: cvText
+    masterCV: cvText,
+    turnstileToken
   });
-  const cvData = sanitizeDashes(extractJson(cvRaw));
+  let session = cvCall.sessionToken;
+  if (!session) throw new Error('Server did not return a session token. Refresh and retry.');
+  const cvData = sanitizeDashes(extractJson(cvCall.text));
   const cv = cvDataToText(cvData);
 
   onStep('research');
-  const researchRaw = await callClaude({
+  const researchCall = await callClaude({
     prompt: buildJobResearchPrompt({
       jobDescription,
       companyName,
@@ -186,16 +195,17 @@ export async function generateApplication({
       learnings: formatLearningsBlock('linkedIn')
     }),
     masterCV: cvText,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }]
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+    sessionToken: session
   });
-  const research = sanitizeDashes(extractJson(researchRaw));
+  const research = sanitizeDashes(extractJson(researchCall.text));
   const hiringManagerName =
     research.hiringManager && typeof research.hiringManager === 'object'
       ? research.hiringManager.name || null
       : research.hiringManager || null;
 
   onStep('coverLetter');
-  const clRaw = await callClaude({
+  const clCall = await callClaude({
     prompt: buildCoverLetterPrompt({
       jobDescription,
       tailoredCV: cv,
@@ -205,9 +215,10 @@ export async function generateApplication({
       senderContact: profile?.contactLine || cvData?.contact || '',
       learnings: formatLearningsBlock('coverLetter')
     }),
-    masterCV: cvText
+    masterCV: cvText,
+    sessionToken: session
   });
-  const clData = sanitizeDashes(extractJson(clRaw));
+  const clData = sanitizeDashes(extractJson(clCall.text));
   const coverLetter = clDataToText(clData);
 
   const hiringManagerDetails =

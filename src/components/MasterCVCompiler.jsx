@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { compileMasterCV, extractCVsFromZip, MAX_CVS } from '../lib/compileMasterCV.js';
 import { saveMasterCV } from '../lib/storage.js';
 import { updateProfileFromText } from '../lib/profile.js';
+import Turnstile, { resetTurnstile } from './Turnstile.jsx';
 
 export default function MasterCVCompiler({ onClose, onCompiled }) {
   const [zipFile, setZipFile] = useState(null);
@@ -9,6 +10,7 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   async function handleCompile() {
     setError(null);
@@ -16,12 +18,19 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
       setError('Choose a .zip file first.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Solve the bot challenge first.');
+      return;
+    }
+    const tokenForCall = turnstileToken;
+    setTurnstileToken('');
+    resetTurnstile();
     try {
       setStatus('extracting');
       const cvs = await extractCVsFromZip(zipFile, setProgress);
       setStatus('compiling');
       setProgress({ filename: `Synthesising master CV from ${cvs.length} CV(s)…` });
-      const masterText = await compileMasterCV({ cvs });
+      const masterText = await compileMasterCV({ cvs, turnstileToken: tokenForCall });
       const filename = `Master CV (${cvs.length} sources).md`;
       saveMasterCV(masterText, filename);
       // Feed every source CV into the profile so we capture identity even
@@ -88,10 +97,20 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
 
             {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
+            {status === 'idle' && (
+              <div className="mb-3">
+                <Turnstile
+                  onToken={setTurnstileToken}
+                  onExpire={() => setTurnstileToken('')}
+                  onError={() => setTurnstileToken('')}
+                />
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={handleCompile}
-                disabled={!zipFile || status !== 'idle'}
+                disabled={!zipFile || !turnstileToken || status !== 'idle'}
                 className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {status === 'extracting' && 'Extracting…'}

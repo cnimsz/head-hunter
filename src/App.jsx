@@ -20,7 +20,7 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
-  async function handleGenerate({ jobDescription, cvText, companyName }) {
+  async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken }) {
     setError(null);
     setResult(null);
     setIsGenerating(true);
@@ -31,6 +31,7 @@ export default function App() {
         cvText,
         companyName,
         profile: profileForGeneration(getProfile()),
+        turnstileToken,
         onStep: setCurrentStep
       });
       setResult(out);

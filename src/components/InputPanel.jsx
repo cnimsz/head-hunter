@@ -3,6 +3,7 @@ import { extractTextFromFile } from '../lib/cvParser.js';
 import { getMasterCV, saveMasterCV, getConsent, setConsent } from '../lib/storage.js';
 import { updateProfileFromText } from '../lib/profile.js';
 import MasterCVCompiler from './MasterCVCompiler.jsx';
+import Turnstile, { resetTurnstile } from './Turnstile.jsx';
 
 const STEP_LABEL = {
   idle: '',
@@ -25,6 +26,7 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
   const [parseError, setParseError] = useState(null);
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [savedCV, setSavedCV] = useState(initialSaved);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   function handleConsentChange(checked) {
     if (!checked && consent) {
@@ -47,10 +49,11 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
   const canGenerate = useMemo(() => {
     if (!consent) return false;
     if (!jobDescription.trim()) return false;
+    if (!turnstileToken) return false;
     if (useSavedCV && savedCV?.text) return true;
     if (cvFileText) return true;
     return false;
-  }, [consent, jobDescription, useSavedCV, savedCV, cvFileText]);
+  }, [consent, jobDescription, turnstileToken, useSavedCV, savedCV, cvFileText]);
 
   async function handleFile(e) {
     const f = e.target.files?.[0];
@@ -75,7 +78,17 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
   function handleSubmit(e) {
     e.preventDefault();
     const cvText = useSavedCV ? savedCV?.text : cvFileText;
-    onGenerate({ jobDescription: jobDescription.trim(), cvText, companyName: companyName.trim() });
+    const tokenForCall = turnstileToken;
+    // Token is single-use server-side. Clear it locally and reset the widget so
+    // the user must re-solve the challenge before another generation.
+    setTurnstileToken('');
+    resetTurnstile();
+    onGenerate({
+      jobDescription: jobDescription.trim(),
+      cvText,
+      companyName: companyName.trim(),
+      turnstileToken: tokenForCall
+    });
   }
 
   return (
@@ -164,6 +177,14 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
             {parseError && <p className="text-xs text-red-600 mt-1">{parseError}</p>}
           </>
         )}
+      </div>
+
+      <div className="mt-2">
+        <Turnstile
+          onToken={setTurnstileToken}
+          onExpire={() => setTurnstileToken('')}
+          onError={() => setTurnstileToken('')}
+        />
       </div>
 
       <button

@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
 import { buildMasterCVPrompt } from '../prompts/master-cv.js';
-import { MODEL, MAX_TOKENS, EDGE_FN_URL, APP_TOKEN } from './claude.js';
+import { MODEL, MAX_TOKENS, EDGE_FN_URL } from './claude.js';
 
 const MAX_CVS = 100;
 const SUPPORTED = ['.pdf', '.docx', '.txt', '.md'];
@@ -66,14 +66,16 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
   return cvs;
 }
 
-export async function compileMasterCV({ cvs }) {
+export async function compileMasterCV({ cvs, turnstileToken }) {
+  if (!turnstileToken) throw new Error('Bot challenge required. Solve the challenge and retry.');
+
   const prompt = buildMasterCVPrompt({ cvs });
 
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-hh-token': APP_TOKEN
+      'cf-turnstile-token': turnstileToken
     },
     body: JSON.stringify({
       model: MODEL,
@@ -84,7 +86,7 @@ export async function compileMasterCV({ cvs }) {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('App token rejected by server. Check your deployment config.');
+    if (res.status === 401) throw new Error('Bot challenge failed. Refresh and retry.');
     if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
     if (res.status === 413) throw new Error('Your CV collection is too large. Try fewer CVs.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
