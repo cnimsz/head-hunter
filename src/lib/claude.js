@@ -185,8 +185,7 @@ export async function generateApplication({
       cvHighlights: cv.slice(0, 2000),
       learnings: formatLearningsBlock('linkedIn')
     }),
-    masterCV: cvText,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }]
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }]
   });
   const research = sanitizeDashes(extractJson(researchRaw));
   const hiringManagerName =
@@ -204,8 +203,7 @@ export async function generateApplication({
       senderName: profile?.name || cvData?.name || '',
       senderContact: profile?.contactLine || cvData?.contact || '',
       learnings: formatLearningsBlock('coverLetter')
-    }),
-    masterCV: cvText
+    })
   });
   const clData = sanitizeDashes(extractJson(clRaw));
   const coverLetter = clDataToText(clData);
