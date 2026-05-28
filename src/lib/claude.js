@@ -195,7 +195,7 @@ export async function generateApplication({
       learnings: formatLearningsBlock('linkedIn')
     }),
     masterCV: cvText,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
     sessionToken: session
   });
   const research = sanitizeDashes(extractJson(researchCall.text));

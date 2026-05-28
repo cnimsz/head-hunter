@@ -230,8 +230,9 @@ function buildNumbering() {
   };
 }
 
-function fullWidthProps() {
+function fullWidthProps({ type } = {}) {
   return {
+    type,
     page: {
       size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
       margin: { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN }
@@ -239,7 +240,7 @@ function fullWidthProps() {
   };
 }
 
-function twoColumnProps({ type }) {
+function twoColumnProps({ type } = {}) {
   return {
     type,
     page: {
@@ -267,7 +268,7 @@ export function renderCV(data) {
   const sections = [];
 
   sections.push({
-    properties: fullWidthProps(),
+    properties: fullWidthProps({ type: SectionType.CONTINUOUS }),
     children: nameBlock(data)
   });
 
@@ -284,7 +285,7 @@ export function renderCV(data) {
   }
 
   sections.push({
-    properties: twoColumnProps({ type: SectionType.CONTINUOUS }),
+    properties: twoColumnProps({ type: splits ? SectionType.NEXT_PAGE : undefined }),
     children: [...page1Sidebar, columnBreak(), ...page1Main]
   });
 
@@ -295,7 +296,7 @@ export function renderCV(data) {
       for (const p of startupAchievements(data.startupAchievements)) page2Main.push(p);
     }
     sections.push({
-      properties: twoColumnProps({ type: SectionType.NEXT_PAGE }),
+      properties: twoColumnProps(),
       children: [...page2Sidebar, columnBreak(), ...page2Main]
     });
   }

@@ -72,9 +72,11 @@ For C-suite/VP roles:
 ## LENGTH ENFORCEMENT (NON-NEGOTIABLE)
 
 - Maximum 2 pages. If over, CUT content — never reduce font size.
+- **Total roles included: MAXIMUM 5.** If the master CV has more, keep the 5 most recent/relevant and compress the rest into a single "Earlier roles" entry (company list, no bullets).
+- **Total bullets across ALL roles combined: MAXIMUM 14.** Distribute across the 5 roles — recent roles get more (3-4), older get fewer (1-2). If you exceed 14, cut the weakest bullets first.
 - Professional Summary: MAXIMUM 3 sentences. Never a paragraph.
 - NO "Track Record" or "Quantified Achievements" section — achievements go in Experience bullets.
-- Experience bullets: MAXIMUM 3-4 per role (recent OR older). Never 5+.
+- Experience bullets per role: MAXIMUM 3-4 (recent), 1-2 (older). Never 5+.
 - Skills section: MAXIMUM 3 lines total. One category per line, comma-separated keywords only (no descriptions, no prose).
 - Remove anything older than 15 years unless directly relevant.
 
@@ -157,7 +159,8 @@ Return a single JSON object with this exact structure. No text before or after t
 }
 
 RULES:
-- experience[].bullets: 3-4 items for recent roles, 1-2 for older
+- experience: MAXIMUM 5 entries total. If the master CV has more, keep the 5 most recent/relevant; compress the rest into ONE final entry with company "Earlier roles", an empty bullets array, and a titleLine listing the older companies (e.g., "Company A · Company B · Company C | 2005 – 2014").
+- experience[].bullets: 3-4 items for recent roles, 1-2 for older. ABSOLUTE TOTAL bullets across all roles ≤ 14.
 - skills: maximum 3 entries, each is "Category: keyword, keyword, ..."
 - education: 1-2 entries
 - summary: 2-3 sentences, no more
