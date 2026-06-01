@@ -11,7 +11,7 @@ All processing runs client-side in the browser — no backend.
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
 - **API:** Anthropic Messages API — claude-sonnet-4-6, proxied via Supabase Edge Function (`head-hunter-claude`)
 - **Bot challenge:** Cloudflare Turnstile gates the edge function. Site key is public (in the bundle); secret key + HMAC session secret live as Supabase secrets.
-- **Supabase:** Project ref `kntzxuzplmuccqvpntql` — edge function uses `HEAD_HUNTER` (Anthropic API key), `TURNSTILE_SECRET_KEY`, and `HEAD_HUNTER_SESSION_SECRET` secrets
+- **Supabase:** Project ref `bcenuebydpkyfmtzfcku` — edge function uses `ANTHROPIC_API_KEY` (Anthropic API key), `TURNSTILE_SECRET_KEY`, and `HEAD_HUNTER_SESSION_SECRET` secrets
 - **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, and `learnings:*`
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
@@ -173,10 +173,10 @@ All Claude API calls are proxied through a Supabase Edge Function. Auth flow:
 3. **Calls 2 & 3 (research, cover letter)** send the session token as `x-session-token`. Edge function verifies HMAC + TTL + IP match. No Cloudflare round-trip.
 
 ```js
-edge_function: 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude'
+edge_function: `${VITE_SUPABASE_URL}/functions/v1/head-hunter-claude` // VITE_SUPABASE_URL points at project bcenuebydpkyfmtzfcku
 model: 'claude-sonnet-4-6'
 max_tokens: 8000
-// Anthropic key stored as Supabase secret HEAD_HUNTER — never exposed to the client.
+// Anthropic key stored as Supabase secret ANTHROPIC_API_KEY — never exposed to the client.
 // First call: cf-turnstile-token header. Subsequent calls in the same generation:
 // x-session-token header. Anything else → 401.
 ```
@@ -189,7 +189,7 @@ Error handling: 401 → bot challenge failed or session expired/invalid, 413 →
 
 | Name | Where | Purpose |
 |------|-------|---------|
-| `HEAD_HUNTER` | Supabase secret | Anthropic API key |
+| `ANTHROPIC_API_KEY` | Supabase secret | Anthropic API key (renamed from `HEAD_HUNTER` on 2026-06-01 after a rotation) |
 | `TURNSTILE_SECRET_KEY` | Supabase secret | Cloudflare Turnstile secret. Test value: `1x0000000000000000000000000000000AA` (always passes) |
 | `HEAD_HUNTER_SESSION_SECRET` | Supabase secret | HMAC key for session tokens. Generate: `openssl rand -hex 32` |
 | `VITE_TURNSTILE_SITE_KEY` | `.env.local` (dev) + Vercel env (prod) | Cloudflare Turnstile site key. Public by design — embedded in client bundle. Test value: `1x00000000000000000000AA` (always passes) |

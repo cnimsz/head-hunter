@@ -198,7 +198,7 @@ serve(async (req) => {
     return jsonError(429, "Too many requests. Try again shortly.", corsHeaders);
   }
 
-  const apiKey = Deno.env.get("HEAD_HUNTER");
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
     console.error("Server misconfiguration: HEAD_HUNTER secret not set");
     return jsonError(500, "Server misconfigured", corsHeaders);

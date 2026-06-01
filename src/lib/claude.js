@@ -5,9 +5,16 @@ import { formatLearningsBlock } from './learnings.js';
 
 export const MODEL = 'claude-sonnet-4-6';
 export const MAX_TOKENS = 8000;
-export const EDGE_FN_URL = 'https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+export const EDGE_FN_URL = SUPABASE_URL
+  ? `${SUPABASE_URL}/functions/v1/head-hunter-claude`
+  : '';
 
 async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken }) {
+  if (!EDGE_FN_URL) {
+    throw new Error('VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).');
+  }
   const payload = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
