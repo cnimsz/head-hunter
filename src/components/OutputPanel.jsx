@@ -3,6 +3,7 @@ import { generateCVDocx, generateCoverLetterDocx } from '../lib/docx.js';
 import FeedbackModal from './FeedbackModal.jsx';
 import EditableCV from './EditableCV.jsx';
 import EditableCoverLetter from './EditableCoverLetter.jsx';
+import GapAnalysisPanel from './GapAnalysisPanel.jsx';
 
 const TABS = [
   { id: 'cv', label: 'CV' },
@@ -26,10 +27,11 @@ function readTemplate() {
   return 'classic';
 }
 
-export default function OutputPanel({ result, error, companyName }) {
+export default function OutputPanel({ result, error, companyName, jobDescription }) {
   const [tab, setTab] = useState('cv');
   const [copied, setCopied] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [gapAnalysisOpen, setGapAnalysisOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCvData, setEditedCvData] = useState(null);
   const [editedClData, setEditedClData] = useState(null);
@@ -170,6 +172,15 @@ export default function OutputPanel({ result, error, companyName }) {
                     Download .docx
                   </button>
                 )}
+                {tab === 'cv' && result?.cv && (
+                  <button
+                    onClick={() => setGapAnalysisOpen(true)}
+                    className="px-2.5 py-1 text-xs rounded border border-blue-400 text-blue-700 dark:text-blue-300"
+                    title="Find what the JD asks for that your CV doesn't address yet"
+                  >
+                    Run Gap Analysis
+                  </button>
+                )}
                 <button
                   onClick={() => setFeedbackOpen(true)}
                   className="px-2.5 py-1 text-xs rounded border border-emerald-400 text-emerald-700 dark:text-emerald-300"
@@ -220,8 +231,24 @@ export default function OutputPanel({ result, error, companyName }) {
       {feedbackOpen && result && (
         <FeedbackModal result={result} onClose={() => setFeedbackOpen(false)} />
       )}
+
+      {gapAnalysisOpen && result?.cv && (
+        <GapAnalysisPanel
+          tailoredCvText={result.cv}
+          jobDescription={jobDescription || ''}
+          {...splitCompanyAndRole(companyName)}
+          onClose={() => setGapAnalysisOpen(false)}
+        />
+      )}
     </div>
   );
+}
+
+function splitCompanyAndRole(value) {
+  if (!value) return { companyName: '', roleTitle: '' };
+  const m = value.match(/^(.*?)\s+[-–—]\s+(.*)$/);
+  if (m) return { companyName: m[1].trim(), roleTitle: m[2].trim() };
+  return { companyName: value.trim(), roleTitle: '' };
 }
 
 function roleSubline(role) {
