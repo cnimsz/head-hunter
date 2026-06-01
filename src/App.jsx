@@ -5,6 +5,7 @@ import SettingsModal from './components/SettingsModal.jsx';
 import { getTheme, saveTheme } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
+import { getSupabaseClient } from './lib/supabase.js';
 
 export default function App() {
   const [theme, setTheme] = useState(getTheme());
@@ -13,18 +14,25 @@ export default function App() {
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState('idle');
-  const [lastInputs, setLastInputs] = useState({ companyName: '' });
+  const [lastInputs, setLastInputs] = useState({ companyName: '', jobDescription: '' });
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     saveTheme(theme);
   }, [theme]);
 
+  // Touch the Supabase client on mount so it picks up magic-link `?code=...`
+  // params from the URL and exchanges them for a session, even if AuthGate
+  // isn't mounted yet. No-op when Supabase env vars aren't configured.
+  useEffect(() => {
+    getSupabaseClient();
+  }, []);
+
   async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken }) {
     setError(null);
     setResult(null);
     setIsGenerating(true);
-    setLastInputs({ companyName: companyName || '' });
+    setLastInputs({ companyName: companyName || '', jobDescription: jobDescription || '' });
     try {
       const out = await generateApplication({
         jobDescription,
@@ -76,6 +84,7 @@ export default function App() {
           result={result}
           error={error}
           companyName={lastInputs.companyName}
+          jobDescription={lastInputs.jobDescription}
         />
       </main>
 
