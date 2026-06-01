@@ -30,16 +30,18 @@ Before deploying, verify:
    ```
    If not linked, run:
    ```bash
-   npx supabase link --project-ref kntzxuzplmuccqvpntql
+   npx supabase link --project-ref bcenuebydpkyfmtzfcku
    ```
 
-4. Check that the Anthropic API key secret is set:
+4. Check that all required secrets are set:
    ```bash
    npx supabase secrets list
    ```
-   Look for `HEAD_HUNTER`. If missing, ask the user for the key (prompt them — do not log or echo the value) and run:
+   Look for `ANTHROPIC_API_KEY`, `TURNSTILE_SECRET_KEY`, and `HEAD_HUNTER_SESSION_SECRET`. If any are missing, ask the user for the value (prompt them — do not log or echo) and run:
    ```bash
-   npx supabase secrets set HEAD_HUNTER=<value>
+   npx supabase secrets set ANTHROPIC_API_KEY=<value>
+   npx supabase secrets set TURNSTILE_SECRET_KEY=<value>
+   npx supabase secrets set HEAD_HUNTER_SESSION_SECRET=<value>  # openssl rand -hex 32
    ```
 
 ## Type-check the function
@@ -58,19 +60,34 @@ npx supabase functions deploy head-hunter-claude
 
 ## Smoke test
 
-Test against the deployed function:
+The function is gated by Cloudflare Turnstile + HMAC session tokens. A real end-to-end POST needs a token from a browser-solved Turnstile widget, which is awkward from the CLI. Instead, run two reachability probes that prove the function is deployed and its auth gate is alive:
 
 ```bash
-curl -X POST https://kntzxuzplmuccqvpntql.supabase.co/functions/v1/head-hunter-claude \
+EDGE_URL=https://bcenuebydpkyfmtzfcku.supabase.co/functions/v1/head-hunter-claude
+ORIGIN=https://head-hunter-fawn.vercel.app
+
+# 1. CORS preflight — expect HTTP 204 with the prod origin echoed back
+curl -s -D - -o /dev/null -X OPTIONS "$EDGE_URL" \
+  -H "Origin: $ORIGIN" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type,cf-turnstile-token"
+
+# 2. POST without auth — expect HTTP 401 with body {"error":"Missing bot challenge or session token"}
+curl -s -w "\nHTTP %{http_code}\n" -X POST "$EDGE_URL" \
+  -H "Origin: $ORIGIN" \
   -H "Content-Type: application/json" \
-  -H "x-hh-token: $HEAD_HUNTER_APP_TOKEN" \
-  -d '{"model":"claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"Reply with the word hello"}]}' \
-  --max-time 30
+  -d '{"model":"claude-sonnet-4-6","max_tokens":50,"messages":[{"role":"user","content":"hi"}]}'
+
+# 3. POST with bad turnstile token — expect HTTP 401 {"error":"Bot challenge failed"}
+#    (Proves TURNSTILE_SECRET_KEY is set and siteverify is reachable from the function.)
+curl -s -w "\nHTTP %{http_code}\n" -X POST "$EDGE_URL" \
+  -H "Origin: $ORIGIN" \
+  -H "Content-Type: application/json" \
+  -H "cf-turnstile-token: dummy-test-token-xxx" \
+  -d '{"model":"claude-sonnet-4-6","max_tokens":50,"messages":[{"role":"user","content":"hi"}]}'
 ```
 
-Note: the `x-hh-token` header is required. Export `HEAD_HUNTER_APP_TOKEN` in your shell first (same value you set as the Supabase secret). A smoke test without the header should return 401 — that's the defense working.
-
-Confirm the response is 200 and contains valid JSON with a `content` array.
+For a true end-to-end test, open https://head-hunter-fawn.vercel.app, solve the Turnstile widget, paste `tests/sample-jd.txt`, and click Generate.
 
 If the smoke test fails, tail logs:
 
