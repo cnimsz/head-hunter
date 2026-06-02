@@ -138,9 +138,9 @@ serve(async (req) => {
     );
   }
 
-  const anthropicKey = Deno.env.get("HEAD_HUNTER");
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) {
-    console.error("HEAD_HUNTER secret missing");
+    console.error("ANTHROPIC_API_KEY secret missing");
     return jsonError(500, "Server misconfigured", corsHeaders);
   }
 
