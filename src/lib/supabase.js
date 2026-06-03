@@ -48,3 +48,8 @@ export function gapAnalysisFunctionUrl() {
   if (!URL) return null;
   return `${URL.replace(/\/+$/, '')}/functions/v1/gap-analysis`;
 }
+
+export function jobsearchFunctionUrl() {
+  if (!URL) return null;
+  return `${URL.replace(/\/+$/, '')}/functions/v1/jobsearch`;
+}
