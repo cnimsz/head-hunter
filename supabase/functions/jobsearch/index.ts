@@ -823,14 +823,26 @@ async function handleSubmitFeedback(
 ) {
   const candidateId =
     typeof body.candidate_id === "string" ? body.candidate_id : "";
-  const action = body.action === "apply" ? "apply" : body.action === "pass" ? "pass" : "";
+  // body.action is the dispatcher route ("submit_feedback"); the pass/apply
+  // distinction comes in under feedback_action so the two fields don't
+  // collide.
+  const action =
+    body.feedback_action === "apply"
+      ? "apply"
+      : body.feedback_action === "pass"
+      ? "pass"
+      : "";
   const reasonCode =
     typeof body.reason_code === "string" ? body.reason_code.slice(0, 64) : "";
   const freeText =
     typeof body.free_text === "string" ? body.free_text.slice(0, 1000) : null;
 
   if (!candidateId || !action || !reasonCode) {
-    return jsonError(400, "candidate_id, action, reason_code required", corsHeaders);
+    return jsonError(
+      400,
+      "candidate_id, feedback_action ('pass'|'apply'), reason_code required",
+      corsHeaders,
+    );
   }
 
   const newCandidateStatus = action === "apply" ? "applied" : "dismissed";
