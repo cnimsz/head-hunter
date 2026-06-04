@@ -389,6 +389,12 @@ verify_jwt = false
 [functions.gap-analysis]
 verify_jwt = false
 
+# Same auth model as gap-analysis: in-function supabase.auth.getUser() against
+# the caller's Bearer JWT, per-user RLS scopes data. Platform JWT check off so
+# our custom CORS + error envelopes own the response.
+[functions.jobsearch]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
