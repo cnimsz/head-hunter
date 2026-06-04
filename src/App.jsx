@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import InputPanel from './components/InputPanel.jsx';
 import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
+import JobSearchPanel from './components/JobSearchPanel.jsx';
 import { getTheme, saveTheme } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
-import { getSupabaseClient } from './lib/supabase.js';
+import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase.js';
 
 export default function App() {
   const [theme, setTheme] = useState(getTheme());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [jobSearchOpen, setJobSearchOpen] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -57,6 +59,14 @@ export default function App() {
       <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">CV Toolkit</h1>
         <div className="flex items-center gap-2">
+          {isSupabaseConfigured() && (
+            <button
+              onClick={() => setJobSearchOpen(true)}
+              className="px-3 py-1 rounded text-sm border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Find Roles
+            </button>
+          )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="px-2 py-1 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -89,6 +99,7 @@ export default function App() {
       </main>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {jobSearchOpen && <JobSearchPanel onClose={() => setJobSearchOpen(false)} />}
     </div>
   );
 }
