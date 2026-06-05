@@ -209,6 +209,14 @@ function Header({ activeCount }) {
 }
 
 function CandidateCard({ candidate, onPass, onApply, disabled }) {
+  function handleApply() {
+    // Open the JD in a new tab first, then surface the feedback modal so the
+    // user can react to what they just read. Spec: Apply both opens the JD
+    // and asks for a reason.
+    window.open(candidate.jd_url, '_blank', 'noopener,noreferrer');
+    onApply();
+  }
+
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 p-4 flex flex-col h-full">
       <h3 className="text-base font-semibold leading-tight">{candidate.company}</h3>
@@ -221,14 +229,6 @@ function CandidateCard({ candidate, onPass, onApply, disabled }) {
           {candidate.why_chosen}
         </p>
       )}
-      <a
-        href={candidate.jd_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-blue-600 dark:text-blue-400 underline mt-3 break-all"
-      >
-        View JD ↗
-      </a>
       <div className="flex-1" />
       <div className="flex gap-2 mt-4">
         <button
@@ -242,11 +242,11 @@ function CandidateCard({ candidate, onPass, onApply, disabled }) {
         </button>
         <button
           type="button"
-          onClick={onApply}
+          onClick={handleApply}
           disabled={disabled}
           className="flex-1 px-3 py-1.5 text-sm rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-medium disabled:opacity-50"
         >
-          Apply
+          Apply ↗
         </button>
       </div>
     </div>
