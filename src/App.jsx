@@ -59,14 +59,6 @@ export default function App() {
       <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">CV Toolkit</h1>
         <div className="flex items-center gap-2">
-          {isSupabaseConfigured() && (
-            <button
-              onClick={() => setJobSearchOpen(true)}
-              className="px-3 py-1 rounded text-sm border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Find Roles
-            </button>
-          )}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="px-2 py-1 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -89,6 +81,7 @@ export default function App() {
           onGenerate={handleGenerate}
           isGenerating={isGenerating}
           currentStep={currentStep}
+          onFindRoles={isSupabaseConfigured() ? () => setJobSearchOpen(true) : null}
         />
         <OutputPanel
           result={result}

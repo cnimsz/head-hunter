@@ -13,7 +13,7 @@ const STEP_LABEL = {
   done: 'Done'
 };
 
-export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
+export default function InputPanel({ onGenerate, isGenerating, currentStep, onFindRoles }) {
   const initialSaved = getMasterCV();
   const [consent, setConsentState] = useState(getConsent());
   const [jobDescription, setJobDescription] = useState('');
@@ -194,6 +194,16 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep }) {
       >
         {isGenerating ? STEP_LABEL[currentStep] || 'Generating…' : 'Generate'}
       </button>
+
+      {onFindRoles && (
+        <button
+          type="button"
+          onClick={onFindRoles}
+          className="px-4 py-2 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium"
+        >
+          Find Roles
+        </button>
+      )}
 
       {compilerOpen && (
         <MasterCVCompiler
