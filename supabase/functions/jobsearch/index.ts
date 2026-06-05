@@ -304,6 +304,11 @@ async function checkFreshness(
 // Query building, scoring, signal derivation
 // ---------------------------------------------------------------------------
 
+interface RecentJDSignal {
+  keywords: string[];
+  captured_at: string; // ISO timestamp
+}
+
 interface UserSignals {
   avoided_industries?: string[];
   preferred_industries?: string[];
@@ -314,6 +319,45 @@ interface UserSignals {
   salary_floor_eur?: number;
   derived_pass_reason_counts?: Record<string, number>;
   derived_apply_reason_counts?: Record<string, number>;
+  // Transient JD-based bias. Each entry is a snapshot of industry keywords
+  // pulled from a JD the user pasted into the tailoring panel before opening
+  // jobsearch. We keep the last 5 entries and decay older than 7 days.
+  recent_jd_signals?: RecentJDSignal[];
+}
+
+const RECENT_JD_SIGNAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const RECENT_JD_SIGNAL_MAX = 5;
+
+function extractJDKeywords(jdText: string): string[] {
+  if (!jdText) return [];
+  const lower = jdText.toLowerCase();
+  const hits: string[] = [];
+  for (const i of INDUSTRY_HINTS) if (lower.includes(i)) hits.push(i);
+  return hits;
+}
+
+function liveJDKeywords(signals: UserSignals): Set<string> {
+  const out = new Set<string>();
+  const cutoff = Date.now() - RECENT_JD_SIGNAL_TTL_MS;
+  for (const s of signals.recent_jd_signals || []) {
+    if (Date.parse(s.captured_at) >= cutoff) {
+      for (const k of s.keywords || []) out.add(k);
+    }
+  }
+  return out;
+}
+
+function captureJDSignal(signals: UserSignals, keywords: string[]): UserSignals {
+  if (!keywords.length) return signals;
+  const cutoff = Date.now() - RECENT_JD_SIGNAL_TTL_MS;
+  const kept = (signals.recent_jd_signals || []).filter(
+    (s) => Date.parse(s.captured_at) >= cutoff,
+  );
+  kept.unshift({ keywords, captured_at: new Date().toISOString() });
+  return {
+    ...signals,
+    recent_jd_signals: kept.slice(0, RECENT_JD_SIGNAL_MAX),
+  };
 }
 
 const SENIORITY_HINTS = [
@@ -342,13 +386,20 @@ const INDUSTRY_HINTS = [
 function buildQueryFromCV(
   masterCvText: string,
   signals: UserSignals,
+  boostKeywords: Set<string>,
 ): { query: string; countryCode?: string } {
   const lower = (masterCvText || "").toLowerCase();
   const sen =
     SENIORITY_HINTS.find((s) => lower.includes(s)) || "director";
   // ONE industry only. Stacking multiple keywords narrows JSearch's full-text
   // index to roles that mention every term and empties the pool fast.
-  const ind = INDUSTRY_HINTS.find((i) => lower.includes(i)) || "fintech";
+  // Prefer a JD-derived keyword if we have one — it's a fresher signal than
+  // anything in the CV.
+  const jdKeyword = [...boostKeywords].find((k) => INDUSTRY_HINTS.includes(k));
+  const ind =
+    jdKeyword ||
+    INDUSTRY_HINTS.find((i) => lower.includes(i)) ||
+    "fintech";
   // Geo goes on the `country` filter, not the free-text query. Including the
   // city name in the query string was matching only postings that literally
   // mention that city in the title or description.
@@ -368,6 +419,7 @@ function scoreCandidate(
   job: NormalizedJob,
   cvLower: string,
   signals: UserSignals,
+  boostKeywords: Set<string> = new Set(),
 ): number {
   const blob = `${job.title} ${job.company} ${job.description_excerpt} ${job.location}`
     .toLowerCase();
@@ -381,6 +433,11 @@ function scoreCandidate(
   // Industry overlap.
   for (const i of INDUSTRY_HINTS) {
     if (blob.includes(i) && cvLower.includes(i)) score += 2;
+  }
+
+  // Boost from JD signals (current paste + non-decayed recent_jd_signals).
+  for (const k of boostKeywords) {
+    if (k && blob.includes(k.toLowerCase())) score += 2.5;
   }
 
   // Geo overlap.
@@ -603,8 +660,27 @@ interface RefreshArgs {
   supabase: SbClient;
   userId: string;
   masterCvText: string;
+  currentJdText: string;
   anthropicKey: string;
   jsearchKey: string | undefined;
+}
+
+async function upsertUserSignals(
+  supabase: SbClient,
+  userId: string,
+  signals: UserSignals,
+) {
+  const { error } = await supabase
+    .from("jobsearch_user_signals")
+    .upsert(
+      {
+        user_id: userId,
+        preferences_json: signals,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+  if (error) console.warn("Signal upsert failed:", error);
 }
 
 async function loadUserSignals(
@@ -664,15 +740,39 @@ async function refreshPool({
   supabase,
   userId,
   masterCvText,
+  currentJdText,
   anthropicKey,
   jsearchKey,
 }: RefreshArgs): Promise<unknown[]> {
+  // 1. Load existing signals.
+  let signals = await loadUserSignals(supabase, userId);
+
+  // 2. If the user opened jobsearch with a JD pasted, capture it as a
+  // transient signal BEFORE any slot check. This way the bias sticks even
+  // when the pool is full and no new candidates are sourced this turn.
+  const freshKeywords = extractJDKeywords(currentJdText);
+  if (freshKeywords.length) {
+    signals = captureJDSignal(signals, freshKeywords);
+    await upsertUserSignals(supabase, userId, signals);
+    console.log(`refresh: captured JD signal keywords=${freshKeywords.join(",")}`);
+  }
+
+  // 3. Slot check. Refresh persists the JD signal even when there is nothing
+  // to source so future refreshes inherit it.
   const activeCount = await loadActiveCount(supabase, userId);
   const slots = Math.max(0, TARGET_ACTIVE - activeCount);
   if (slots === 0) return [];
 
-  const signals = await loadUserSignals(supabase, userId);
-  const { query, countryCode } = buildQueryFromCV(masterCvText, signals);
+  // 4. Build the boost set from the current paste + non-decayed history.
+  const boostKeywords = liveJDKeywords(signals);
+  if (freshKeywords.length) for (const k of freshKeywords) boostKeywords.add(k);
+  console.log(`refresh: boost_keywords=[${[...boostKeywords].join(",")}]`);
+
+  const { query, countryCode } = buildQueryFromCV(
+    masterCvText,
+    signals,
+    boostKeywords,
+  );
   const sourced = await sourceCandidates(query, countryCode, jsearchKey);
   if (!sourced.length) return [];
 
@@ -688,7 +788,10 @@ async function refreshPool({
       dedupDropped++;
       continue;
     }
-    scored.push({ job: j, score: scoreCandidate(j, cvLower, signals) });
+    scored.push({
+      job: j,
+      score: scoreCandidate(j, cvLower, signals, boostKeywords),
+    });
   }
   scored.sort((a, b) => b.score - a.score);
   console.log(
@@ -787,6 +890,7 @@ async function handleRefresh(
   supabase: SbClient,
   userId: string,
   masterCvText: string,
+  currentJdText: string,
   anthropicKey: string,
   jsearchKey: string | undefined,
   corsHeaders: Record<string, string>,
@@ -795,6 +899,7 @@ async function handleRefresh(
     supabase,
     userId,
     masterCvText,
+    currentJdText,
     anthropicKey,
     jsearchKey,
   });
@@ -885,6 +990,7 @@ async function handleSubmitFeedback(
   userId: string,
   body: Record<string, unknown>,
   masterCvText: string,
+  currentJdText: string,
   anthropicKey: string,
   jsearchKey: string | undefined,
   corsHeaders: Record<string, string>,
@@ -944,6 +1050,7 @@ async function handleSubmitFeedback(
     supabase,
     userId,
     masterCvText,
+    currentJdText,
     anthropicKey,
     jsearchKey,
     corsHeaders,
@@ -1024,6 +1131,10 @@ serve(async (req) => {
     typeof body.master_cv_text === "string"
       ? body.master_cv_text.slice(0, 100_000)
       : "";
+  const currentJdText =
+    typeof body.current_jd_text === "string"
+      ? body.current_jd_text.slice(0, 20_000)
+      : "";
 
   if (action === "list_active") {
     return await handleListActive(supabase, userId, corsHeaders);
@@ -1040,6 +1151,7 @@ serve(async (req) => {
       supabase,
       userId,
       masterCvText,
+      currentJdText,
       anthropicKey,
       jsearchKey,
       corsHeaders,
@@ -1051,6 +1163,7 @@ serve(async (req) => {
       userId,
       body,
       masterCvText,
+      currentJdText,
       anthropicKey,
       jsearchKey,
       corsHeaders,

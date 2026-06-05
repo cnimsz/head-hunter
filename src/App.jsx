@@ -12,6 +12,7 @@ export default function App() {
   const [theme, setTheme] = useState(getTheme());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [jobSearchOpen, setJobSearchOpen] = useState(false);
+  const [jobSearchSeedJD, setJobSearchSeedJD] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -81,7 +82,14 @@ export default function App() {
           onGenerate={handleGenerate}
           isGenerating={isGenerating}
           currentStep={currentStep}
-          onFindRoles={isSupabaseConfigured() ? () => setJobSearchOpen(true) : null}
+          onFindRoles={
+            isSupabaseConfigured()
+              ? (currentJD) => {
+                  setJobSearchSeedJD(currentJD || '');
+                  setJobSearchOpen(true);
+                }
+              : null
+          }
         />
         <OutputPanel
           result={result}
@@ -92,7 +100,12 @@ export default function App() {
       </main>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-      {jobSearchOpen && <JobSearchPanel onClose={() => setJobSearchOpen(false)} />}
+      {jobSearchOpen && (
+        <JobSearchPanel
+          seedJDText={jobSearchSeedJD}
+          onClose={() => setJobSearchOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -198,7 +198,7 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
       {onFindRoles && (
         <button
           type="button"
-          onClick={onFindRoles}
+          onClick={() => onFindRoles(jobDescription.trim())}
           className="px-4 py-2 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium"
         >
           Find Roles

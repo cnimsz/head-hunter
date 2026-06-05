@@ -29,7 +29,7 @@ const APPLY_REASONS = [
   ['other', 'Other']
 ];
 
-export default function JobSearchPanel({ onClose }) {
+export default function JobSearchPanel({ onClose, seedJDText }) {
   return (
     <div
       className="fixed inset-0 z-40 bg-black/50 flex justify-center items-start overflow-y-auto"
@@ -42,7 +42,7 @@ export default function JobSearchPanel({ onClose }) {
           title="Sign in to find roles"
           subtitle="We scope your role discovery and feedback to you. One-time magic link — no password."
         >
-          <PanelBody onClose={onClose} />
+          <PanelBody onClose={onClose} seedJDText={seedJDText} />
         </AuthGate>
         <FloatingCloseButton onClose={onClose} />
       </div>
@@ -63,7 +63,7 @@ function FloatingCloseButton({ onClose }) {
   );
 }
 
-function PanelBody({ onClose }) {
+function PanelBody({ onClose, seedJDText }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -87,13 +87,15 @@ function PanelBody({ onClose }) {
         const initial = await listActiveCandidates();
         if (cancelled) return;
         const list = initial.candidates || [];
-        if (list.length >= TARGET_ACTIVE) {
+        // If the user opened Find Roles with a JD in the textarea we always
+        // refresh — the JD is a fresh signal that should bias this open even
+        // if the pool was already full from earlier.
+        if (list.length >= TARGET_ACTIVE && !seedJDText) {
           setCandidates(list);
           setLoading(false);
           return;
         }
-        // Pool under-filled — top up.
-        const refreshed = await refreshCandidates();
+        const refreshed = await refreshCandidates({ currentJDText: seedJDText });
         if (cancelled) return;
         setCandidates(refreshed.candidates || []);
         if ((refreshed.candidates || []).length === 0) setExhausted(true);

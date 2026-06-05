@@ -55,16 +55,21 @@ export async function listActiveCandidates() {
  * edge function uses it to build the JSearch query and the per-candidate
  * "why this role for you" lines.
  *
+ * @param {object} [opts]
+ * @param {string} [opts.currentJDText]  Optional JD currently pasted in the
+ *   tailoring panel. If provided, the edge function persists it as a
+ *   transient signal (decays over 7 days) AND uses it to bias this refresh.
  * @returns {Promise<{ candidates: Array<object>, newly_added: number }>}
  */
-export async function refreshCandidates() {
+export async function refreshCandidates({ currentJDText } = {}) {
   const master = getMasterCV();
   if (!master?.text) {
     throw new Error('Save a Master CV first — the jobsearch needs it to find matching roles.');
   }
   return await callJobsearch({
     action: 'refresh',
-    master_cv_text: master.text
+    master_cv_text: master.text,
+    current_jd_text: (currentJDText || '').slice(0, 20000)
   });
 }
 
