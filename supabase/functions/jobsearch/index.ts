@@ -104,15 +104,40 @@ function pickJSearchLocation(j: Record<string, unknown>): string {
     .join(" · ");
 }
 
+// Mapping from city tokens we extract from the CV to ISO 3166-1 alpha-2
+// country codes that JSearch's `country` filter expects. Keeps the keyword
+// query tight (no geo noise) while still scoping results to the right region.
+const GEO_COUNTRY_BY_CITY: Record<string, string> = {
+  berlin: "de",
+  munich: "de",
+  hamburg: "de",
+  frankfurt: "de",
+  london: "gb",
+  amsterdam: "nl",
+  paris: "fr",
+  dublin: "ie",
+  zurich: "ch",
+  madrid: "es",
+  stockholm: "se",
+};
+
 async function searchJobsJSearch(
   query: string,
+  countryCode: string | undefined,
   apiKey: string,
 ): Promise<NormalizedJob[]> {
   const url = new URL("https://jsearch.p.rapidapi.com/search");
   url.searchParams.set("query", query);
   url.searchParams.set("num_pages", "1");
   url.searchParams.set("page", "1");
-  url.searchParams.set("date_posted", "month");
+  // Intentionally NOT setting date_posted — defaults to "all". A 30-day filter
+  // was emptying the pool for senior/niche queries even when relevant roles
+  // existed.
+  if (countryCode) url.searchParams.set("country", countryCode);
+
+  console.log(
+    `JSearch query: "${query}" country: "${countryCode || ""}"`,
+  );
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -129,12 +154,31 @@ async function searchJobsJSearch(
     ? body.data
     : [];
 
+  console.log(`JSearch returned ${data.length} raw results`);
+
+  let droppedNoCompany = 0;
+  let droppedNoUrl = 0;
   const out: NormalizedJob[] = [];
   for (const j of data.slice(0, JSEARCH_RESULT_BUDGET)) {
     const company = typeof j.employer_name === "string" ? j.employer_name : "";
     const title = typeof j.job_title === "string" ? j.job_title : "";
-    const apply = typeof j.job_apply_link === "string" ? j.job_apply_link : "";
-    if (!company || !title || !apply) continue;
+    // job_apply_link is often null even when JSearch has a usable URL. Fall
+    // back through the chain: apply → offer expiration page → google search
+    // landing. The Google link redirects to the real posting in most cases.
+    const apply =
+      (typeof j.job_apply_link === "string" && j.job_apply_link) ||
+      (typeof j.job_offer_expiration_link === "string" &&
+        j.job_offer_expiration_link) ||
+      (typeof j.job_google_link === "string" && j.job_google_link) ||
+      "";
+    if (!company || !title) {
+      droppedNoCompany++;
+      continue;
+    }
+    if (!apply) {
+      droppedNoUrl++;
+      continue;
+    }
     const desc = typeof j.job_description === "string" ? j.job_description : "";
     out.push({
       company: company.trim().slice(0, 200),
@@ -147,6 +191,9 @@ async function searchJobsJSearch(
       description_excerpt: desc.slice(0, 1500),
     });
   }
+  console.log(
+    `JSearch normalized: ${out.length} kept, ${droppedNoCompany} no company/title, ${droppedNoUrl} no apply URL`,
+  );
   return out;
 }
 
@@ -207,10 +254,11 @@ function stubJobs(): NormalizedJob[] {
 
 async function sourceCandidates(
   query: string,
+  countryCode: string | undefined,
   apiKey: string | undefined,
 ): Promise<NormalizedJob[]> {
   if (!apiKey) return stubJobs();
-  const jobs = await searchJobsJSearch(query, apiKey);
+  const jobs = await searchJobsJSearch(query, countryCode, apiKey);
   if (!jobs.length) {
     // JSearch returned nothing or errored; fall back to stub so the user sees
     // something rather than an empty pool.
@@ -291,28 +339,28 @@ const INDUSTRY_HINTS = [
   "cybersecurity",
 ];
 
-function buildQueryFromCV(masterCvText: string, signals: UserSignals): string {
+function buildQueryFromCV(
+  masterCvText: string,
+  signals: UserSignals,
+): { query: string; countryCode?: string } {
   const lower = (masterCvText || "").toLowerCase();
   const sen =
     SENIORITY_HINTS.find((s) => lower.includes(s)) || "director";
-  const inds = INDUSTRY_HINTS.filter((i) => lower.includes(i)).slice(0, 2);
-  const ind = inds.length ? inds.join(" ") : "fintech";
-  const geo = signals.geo || guessGeo(lower) || "Berlin";
-  // JSearch's query API expects natural-language strings.
-  return `${sen} sales ${ind} ${geo}`;
+  // ONE industry only. Stacking multiple keywords narrows JSearch's full-text
+  // index to roles that mention every term and empties the pool fast.
+  const ind = INDUSTRY_HINTS.find((i) => lower.includes(i)) || "fintech";
+  // Geo goes on the `country` filter, not the free-text query. Including the
+  // city name in the query string was matching only postings that literally
+  // mention that city in the title or description.
+  const city = (signals.geo || guessGeo(lower) || "").toLowerCase();
+  const countryCode = GEO_COUNTRY_BY_CITY[city];
+  return { query: `${sen} ${ind}`, countryCode };
 }
 
 function guessGeo(lowerCv: string): string {
-  const cities = [
-    "berlin",
-    "london",
-    "amsterdam",
-    "munich",
-    "paris",
-    "dublin",
-    "remote",
-  ];
-  for (const c of cities) if (lowerCv.includes(c)) return c;
+  for (const c of Object.keys(GEO_COUNTRY_BY_CITY)) {
+    if (lowerCv.includes(c)) return c;
+  }
   return "";
 }
 
@@ -624,36 +672,56 @@ async function refreshPool({
   if (slots === 0) return [];
 
   const signals = await loadUserSignals(supabase, userId);
-  const query = buildQueryFromCV(masterCvText, signals);
-  const sourced = await sourceCandidates(query, jsearchKey);
+  const { query, countryCode } = buildQueryFromCV(masterCvText, signals);
+  const sourced = await sourceCandidates(query, countryCode, jsearchKey);
   if (!sourced.length) return [];
 
   const seen = await loadSeenKeys(supabase, userId);
   const cvLower = (masterCvText || "").toLowerCase();
 
   // Dedup against seen, then score.
+  let dedupDropped = 0;
   const scored: PreScored[] = [];
   for (const j of sourced) {
     const key = `${j.company.toLowerCase()}::${j.title.toLowerCase()}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      dedupDropped++;
+      continue;
+    }
     scored.push({ job: j, score: scoreCandidate(j, cvLower, signals) });
   }
   scored.sort((a, b) => b.score - a.score);
+  console.log(
+    `refresh: sourced=${sourced.length} seen=${seen.size} dedup_dropped=${dedupDropped} scored=${scored.length} slots=${slots}`,
+  );
 
   // Take top 3 * slots so freshness drops don't leave us empty.
   const headroom = Math.max(slots * 3, slots + 2);
   const candidatesPreFreshness = scored.slice(0, headroom);
 
-  // Freshness check in parallel.
+  // Freshness check in parallel. Stub URLs are deliberately fake — skip the
+  // network check for them so dev mode reliably populates the pool.
   const freshnessResults = await Promise.all(
-    candidatesPreFreshness.map((c) => checkFreshness(c.job.jd_url)),
+    candidatesPreFreshness.map((c) =>
+      c.job.source === "stub"
+        ? Promise.resolve<"open">("open")
+        : checkFreshness(c.job.jd_url),
+    ),
   );
 
+  let freshnessDropped = 0;
   const live: PreScored[] = [];
   for (let i = 0; i < candidatesPreFreshness.length; i++) {
-    if (freshnessResults[i] !== "404") live.push(candidatesPreFreshness[i]);
+    if (freshnessResults[i] === "404") {
+      freshnessDropped++;
+      continue;
+    }
+    live.push(candidatesPreFreshness[i]);
     if (live.length >= slots) break;
   }
+  console.log(
+    `refresh: freshness_dropped=${freshnessDropped} live=${live.length}`,
+  );
   if (!live.length) return [];
 
   // why_chosen via Anthropic.
