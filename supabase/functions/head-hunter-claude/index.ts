@@ -136,7 +136,7 @@ async function verifySessionToken(token: string, ip: string): Promise<boolean> {
   return await crypto.subtle.verify(
     "HMAC",
     key,
-    sigBytes,
+    sigBytes as BufferSource,
     new TextEncoder().encode(`${ts}.${ip}`),
   );
 }
