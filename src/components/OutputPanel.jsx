@@ -27,7 +27,7 @@ function readTemplate() {
   return 'classic';
 }
 
-export default function OutputPanel({ result, error, companyName, jobDescription }) {
+export default function OutputPanel({ result, error, companyName, jobDescription, onRetailor }) {
   const [tab, setTab] = useState('cv');
   const [copied, setCopied] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -237,6 +237,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
           tailoredCvText={result.cv}
           jobDescription={jobDescription || ''}
           {...splitCompanyAndRole(companyName)}
+          onRetailor={onRetailor}
           onClose={() => setGapAnalysisOpen(false)}
         />
       )}

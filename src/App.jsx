@@ -3,7 +3,7 @@ import InputPanel from './components/InputPanel.jsx';
 import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobSearchPanel from './components/JobSearchPanel.jsx';
-import { getTheme, saveTheme } from './lib/storage.js';
+import { getTheme, saveTheme, getMasterCV } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase.js';
@@ -55,6 +55,20 @@ export default function App() {
     }
   }
 
+  async function handleRetailorAfterGap({ turnstileToken }) {
+    const master = getMasterCV();
+    if (!master?.text) {
+      setError('No Master CV found in this browser. Save one before re-tailoring.');
+      return;
+    }
+    await handleGenerate({
+      jobDescription: lastInputs.jobDescription,
+      cvText: master.text,
+      companyName: lastInputs.companyName,
+      turnstileToken
+    });
+  }
+
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
       <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
@@ -96,6 +110,7 @@ export default function App() {
           error={error}
           companyName={lastInputs.companyName}
           jobDescription={lastInputs.jobDescription}
+          onRetailor={handleRetailorAfterGap}
         />
       </main>
 

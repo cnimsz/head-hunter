@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AuthGate from './AuthGate.jsx';
+import Turnstile, { resetTurnstile } from './Turnstile.jsx';
 import {
   runGapAnalysis,
   updateFinding,
@@ -31,6 +32,7 @@ export default function GapAnalysisPanel({
   jobDescription,
   companyName,
   roleTitle,
+  onRetailor,
   onClose
 }) {
   return (
@@ -50,6 +52,7 @@ export default function GapAnalysisPanel({
             jobDescription={jobDescription}
             companyName={companyName}
             roleTitle={roleTitle}
+            onRetailor={onRetailor}
             onClose={onClose}
           />
         </AuthGate>
@@ -74,11 +77,13 @@ function FloatingCloseButton({ onClose }) {
   );
 }
 
-function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onClose }) {
+function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onRetailor, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [run, setRun] = useState(null); // { run_id, findings, reframe, shortest_path }
   const [findingState, setFindingState] = useState({}); // id -> { status, answer, applied, masterCvSection }
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [retailoring, setRetailoring] = useState(false);
   const hasRunRef = useRef(false);
 
   useEffect(() => {
@@ -115,6 +120,12 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onC
     () => Object.values(findingState).filter((s) => s.status !== 'open').length,
     [findingState]
   );
+  const appliedCount = useMemo(
+    () => Object.values(findingState).filter((s) => s.applied).length,
+    [findingState]
+  );
+  const canRetailor = appliedCount > 0 && Boolean(onRetailor);
+  const retailorReady = canRetailor && Boolean(turnstileToken);
 
   async function handleDone() {
     if (run?.run_id) {
@@ -122,6 +133,17 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onC
         await completeRun(run.run_id, addressedCount);
       } catch (e) {
         console.warn('completeRun failed:', e);
+      }
+    }
+    if (retailorReady) {
+      setRetailoring(true);
+      try {
+        await onRetailor({ turnstileToken });
+      } catch (e) {
+        console.warn('retailor failed:', e);
+      } finally {
+        setRetailoring(false);
+        resetTurnstile();
       }
     }
     onClose();
@@ -190,17 +212,37 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onC
         )}
       </div>
 
-      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-5 py-3 flex items-center justify-between">
-        <span className="text-xs text-slate-500">
-          {addressedCount} of {totalGaps} addressed
-        </span>
-        <button
-          type="button"
-          onClick={handleDone}
-          className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium"
-        >
-          Done
-        </button>
+      <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-5 py-3 space-y-3">
+        {canRetailor && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              {appliedCount} answer{appliedCount === 1 ? '' : 's'} added to your Master CV.
+              Solve the bot challenge to re-tailor your CV with the new info.
+            </p>
+            <Turnstile
+              onToken={setTurnstileToken}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => setTurnstileToken('')}
+            />
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-slate-500">
+            {addressedCount} of {totalGaps} addressed
+          </span>
+          <button
+            type="button"
+            onClick={handleDone}
+            disabled={retailoring || (canRetailor && !retailorReady)}
+            className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {retailoring
+              ? 'Re-tailoring…'
+              : canRetailor
+                ? 'Done & Re-tailor'
+                : 'Done'}
+          </button>
+        </div>
       </div>
     </div>
   );
