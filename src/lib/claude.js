@@ -4,6 +4,9 @@ import { buildCoverLetterPrompt } from '../prompts/cover-letter.js';
 import { formatLearningsBlock } from './learnings.js';
 
 export const MODEL = 'claude-sonnet-4-6';
+// Research call uses Haiku to draw from a separate rate-limit pool —
+// web_search inflates input tokens enough to blow Sonnet's Tier 1 ITPM.
+export const RESEARCH_MODEL = 'claude-haiku-4-5-20251001';
 export const MAX_TOKENS = 8000;
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -11,12 +14,12 @@ export const EDGE_FN_URL = SUPABASE_URL
   ? `${SUPABASE_URL}/functions/v1/head-hunter-claude`
   : '';
 
-async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken }) {
+async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken, model }) {
   if (!EDGE_FN_URL) {
     throw new Error('VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).');
   }
   const payload = {
-    model: MODEL,
+    model: model || MODEL,
     max_tokens: MAX_TOKENS,
     messages: [{ role: 'user', content: prompt }]
   };
@@ -203,7 +206,8 @@ export async function generateApplication({
     }),
     masterCV: cvText,
     tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
-    sessionToken: session
+    sessionToken: session,
+    model: RESEARCH_MODEL
   });
   const research = sanitizeDashes(extractJson(researchCall.text));
   const hiringManagerName =
