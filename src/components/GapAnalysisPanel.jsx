@@ -191,6 +191,8 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
         roleTitle={roleTitle}
         totalGaps={totalGaps}
         addressedCount={addressedCount}
+        matchScore={run.match_score}
+        matchScoreRationale={run.match_score_rationale}
       />
 
       <div className="px-5 py-3 flex-1 space-y-3">
@@ -248,17 +250,47 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
   );
 }
 
-function Header({ companyName, roleTitle, totalGaps, addressedCount }) {
+function Header({ companyName, roleTitle, totalGaps, addressedCount, matchScore, matchScoreRationale }) {
   const subject = [companyName, roleTitle].filter(Boolean).join(' · ') || 'Tailored CV';
   return (
     <div className="px-5 pt-5 pb-3 border-b border-slate-200 dark:border-slate-800">
-      <h2 className="text-lg font-semibold">Gap Analysis</h2>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subject}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-semibold">Gap Analysis</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subject}</p>
+        </div>
+        {typeof matchScore === 'number' && (
+          <MatchScoreBadge score={matchScore} />
+        )}
+      </div>
+      {typeof matchScore === 'number' && matchScoreRationale && (
+        <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 italic">
+          {matchScoreRationale}
+        </p>
+      )}
       {typeof totalGaps === 'number' && (
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
           {totalGaps} gaps found · {addressedCount} addressed
         </p>
       )}
+    </div>
+  );
+}
+
+function MatchScoreBadge({ score }) {
+  const tone =
+    score >= 80
+      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-800'
+      : score >= 50
+        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-800'
+        : 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-200 dark:border-red-800';
+  return (
+    <div
+      className={`flex flex-col items-center justify-center border rounded px-3 py-1.5 min-w-[72px] ${tone}`}
+      title="Estimated match between this tailored CV and the JD, before gap answers are applied."
+    >
+      <span className="text-xl font-bold leading-none">{score}<span className="text-xs font-medium">%</span></span>
+      <span className="text-[10px] uppercase tracking-wide mt-0.5">Match</span>
     </div>
   );
 }

@@ -41,11 +41,11 @@ You produce gap analyses at this exact quality bar.
 
 ### Three tiers of gaps, ranked by interview-blocking impact
 
-- **highest** — quantitative claims a recruiter will literally scan for in the first 6 seconds (deal sizes, quota %, AUM, headcount managed, team P&L scope, named flagship customers). Aim for 2–4 gaps in this tier.
-- **medium** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications, vertical expertise, regulatory domain knowledge). Aim for 2–4 gaps in this tier.
-- **hiding** — content likely already in the candidate's background but not surfaced in this tailored CV (pipeline metrics, win rates, named accounts, niche speaking venues, partner relationships). Cross-check against the Master CV when given. Aim for 2–3 gaps in this tier.
+- **highest** — quantitative claims a recruiter will literally scan for in the first 6 seconds (deal sizes, quota %, AUM, headcount managed, team P&L scope, named flagship customers). Aim for 1–3 gaps in this tier.
+- **medium** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications, vertical expertise, regulatory domain knowledge). Aim for 1–3 gaps in this tier.
+- **hiding** — content likely already in the candidate's background but not surfaced in this tailored CV (pipeline metrics, win rates, named accounts, niche speaking venues, partner relationships). Cross-check against the Master CV when given. Aim for 1–3 gaps in this tier.
 
-Total gaps across all three tiers: **8–12**. Order them within each tier by interview-blocking impact (most blocking first).
+Total gaps across all three tiers: **3–9**. Be selective — only surface gaps that are genuinely interview-blocking; do not pad to hit the upper bound. Order them within each tier by interview-blocking impact (most blocking first).
 
 ### Each gap has exactly three parts
 
@@ -60,6 +60,19 @@ If you spot something in the candidate's CV that looks like a weakness for this 
 ### Required: shortest_path
 
 The 3–5 highest-leverage gap questions, drawn verbatim from gaps[].question, in priority order. The candidate should be able to answer all of them in one round and unlock the biggest CV improvements.
+
+### Required: match_score
+
+A single integer 0–100 estimating how well the tailored CV matches THIS JD as currently written (before any gap answers are added back). Judge holistically — JD requirements covered with named evidence vs. JD requirements missing, fudged, or weakly supported. Weight by interview-blocking impact: a missing "highest"-tier requirement costs more than a missing "hiding"-tier one.
+
+Calibration anchors:
+- **90–100** — Strong match. Every must-have JD requirement is covered with named, quantified evidence. Remaining gaps are minor or "hiding"-tier only.
+- **75–89** — Solid match with addressable gaps. Most must-haves covered; 1–2 "highest"-tier gaps or several "medium"-tier gaps remain.
+- **60–74** — Partial match. Multiple "highest"-tier gaps unaddressed, or a core JD theme (vertical, methodology, scale) is missing entirely.
+- **40–59** — Material misalignment. The CV reads as adjacent but not on-target for this specific role.
+- **0–39** — Wrong role fit. Fundamental mismatch in seniority, domain, or function.
+
+Also return **score_rationale**: one sentence (≤25 words) naming the 1–2 biggest drivers of the score. No hedging, no preamble.
 
 ## Integrity rules — non-negotiable
 
@@ -94,6 +107,8 @@ Then produce the ranked gap analysis.
 Return ONE JSON object. No markdown fences, no commentary, no text before or after.
 
 {
+  "match_score": 72,
+  "score_rationale": "One sentence (≤25 words) naming the 1–2 biggest drivers of the score.",
   "gaps": [
     {
       "title": "Short phrase",
@@ -114,7 +129,9 @@ Return ONE JSON object. No markdown fences, no commentary, no text before or aft
 }
 
 Constraints:
-- 8–12 gaps total.
+- match_score: integer 0–100, calibrated per the anchors above.
+- score_rationale: one sentence, ≤25 words.
+- 3–9 gaps total. Fewer high-signal gaps beats more padded ones.
 - impact_tier ∈ {"highest", "medium", "hiding"}.
 - Omit "reframe" entirely if you don't have a credible one.
 - shortest_path: 3–5 entries, each a verbatim copy of one gaps[].question.

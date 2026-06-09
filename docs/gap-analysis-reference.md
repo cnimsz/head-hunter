@@ -11,9 +11,11 @@
 A gap analysis run should produce:
 
 1. **Three tiers of gaps**, ranked by interview-blocking impact:
-   - **Highest-impact** — quantitative claims a recruiter will literally scan for (deal sizes, quota %, AUM, headcount). 2–4 gaps in this tier.
-   - **Medium-impact** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications). 2–4 gaps in this tier.
-   - **Hiding-in-background** — likely the candidate has the data but it isn't surfaced (pipeline metrics, win rates, named accounts, niche speaking venues). 2–3 gaps in this tier.
+   - **Highest-impact** — quantitative claims a recruiter will literally scan for (deal sizes, quota %, AUM, headcount). 1–3 gaps in this tier.
+   - **Medium-impact** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications). 1–3 gaps in this tier.
+   - **Hiding-in-background** — likely the candidate has the data but it isn't surfaced (pipeline metrics, win rates, named accounts, niche speaking venues). 1–3 gaps in this tier.
+
+   Total across all three tiers: **3–9 gaps**. Be selective — only surface gaps that are genuinely interview-blocking; do not pad to hit the upper bound.
 
 2. **Each gap has three parts:**
    - **Title** — what's missing, in one phrase
@@ -27,6 +29,9 @@ A gap analysis run should produce:
 ---
 
 ## Reference output (verbatim from May 29, 2026)
+
+> Note: this capture has 10 gaps — it predates the 2026-06-09 tightening from 8–12 to **3–9**. Match its depth, named specificity, and tone, but not its count.
+
 
 Honest gap analysis against the JD. I'll rank them by interview-blocking impact, then tell you which ones I can plug if you give me the data.
 

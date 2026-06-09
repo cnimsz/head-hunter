@@ -25,11 +25,11 @@ The reference output is `/docs/gap-analysis-reference.md` — a real run from 20
 
 ## Three tiers of gaps, ranked by interview-blocking impact
 
-- **highest** — quantitative claims a recruiter will literally scan for in the first 6 seconds (deal sizes, quota %, AUM, headcount managed, team P&L scope, named flagship customers). Aim for 2–4 gaps.
-- **medium** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications, vertical expertise, regulatory domain knowledge). Aim for 2–4 gaps.
-- **hiding** — content likely already in the candidate's background but not surfaced in the tailored CV (pipeline metrics, win rates, named accounts, niche speaking venues, partner relationships). Cross-check against the Master CV. Aim for 2–3 gaps.
+- **highest** — quantitative claims a recruiter will literally scan for in the first 6 seconds (deal sizes, quota %, AUM, headcount managed, team P&L scope, named flagship customers). Aim for 1–3 gaps.
+- **medium** — structural credibility signals (sales methodology, language fluency, time-zone overlap, certifications, vertical expertise, regulatory domain knowledge). Aim for 1–3 gaps.
+- **hiding** — content likely already in the candidate's background but not surfaced in the tailored CV (pipeline metrics, win rates, named accounts, niche speaking venues, partner relationships). Cross-check against the Master CV. Aim for 1–3 gaps.
 
-Total: **8–12 gaps**. Order them within each tier by interview-blocking impact (most blocking first).
+Total: **3–9 gaps**. Be selective — only surface gaps that are genuinely interview-blocking; do not pad to hit the upper bound. Order them within each tier by interview-blocking impact (most blocking first).
 
 ## Each gap has exactly three parts
 
@@ -44,6 +44,19 @@ If you spot something in the candidate's CV that looks like a weakness for this 
 ## Required: shortest_path
 
 The 3–5 highest-leverage gap questions, drawn verbatim from `gaps[].question`, in priority order.
+
+## Required: match_score
+
+A single integer 0–100 estimating how well the tailored CV matches THIS JD as currently written (before any gap answers are added back). Weight by interview-blocking impact — a missing "highest"-tier requirement costs more than a missing "hiding"-tier one.
+
+Calibration anchors:
+- **90–100** — Strong match. Every must-have JD requirement covered with named evidence. Only minor/"hiding" gaps remain.
+- **75–89** — Solid match with addressable gaps. Most must-haves covered; 1–2 "highest" gaps or several "medium" gaps remain.
+- **60–74** — Partial match. Multiple "highest" gaps, or a core JD theme missing entirely.
+- **40–59** — Material misalignment.
+- **0–39** — Wrong role fit.
+
+Also return `score_rationale`: one sentence (≤25 words) naming the 1–2 biggest drivers of the score.
 
 ## Integrity rules — non-negotiable
 
@@ -66,6 +79,8 @@ Return ONE JSON object. No markdown fences, no commentary.
 
 ```json
 {
+  "match_score": 72,
+  "score_rationale": "One sentence (≤25 words) naming the 1–2 biggest drivers of the score.",
   "gaps": [
     {
       "title": "Short phrase",
@@ -87,7 +102,9 @@ Return ONE JSON object. No markdown fences, no commentary.
 ```
 
 Constraints:
-- 8–12 gaps total.
+- `match_score`: integer 0–100, calibrated per the anchors above.
+- `score_rationale`: one sentence, ≤25 words.
+- 3–9 gaps total. Fewer high-signal gaps beats more padded ones.
 - `impact_tier ∈ {"highest", "medium", "hiding"}`.
 - Omit `reframe` entirely if you don't have a credible one.
 - `shortest_path`: 3–5 entries, each a verbatim copy of one `gaps[].question`.

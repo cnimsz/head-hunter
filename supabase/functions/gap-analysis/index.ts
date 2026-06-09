@@ -295,9 +295,24 @@ serve(async (req) => {
     return jsonError(500, "Failed to save findings", corsHeaders);
   }
 
+  const rawScore = analysis?.match_score;
+  const matchScore =
+    typeof rawScore === "number" && Number.isFinite(rawScore)
+      ? Math.max(0, Math.min(100, Math.round(rawScore)))
+      : null;
+  const rawRationale = analysis?.score_rationale;
+  const matchScoreRationale =
+    typeof rawRationale === "string" && rawRationale.trim()
+      ? rawRationale.trim().slice(0, 500)
+      : null;
+
   await supabase
     .from("gap_analysis_runs")
-    .update({ total_gaps: insertedFindings.length })
+    .update({
+      total_gaps: insertedFindings.length,
+      match_score: matchScore,
+      match_score_rationale: matchScoreRationale,
+    })
     .eq("id", run.id);
 
   return new Response(
@@ -308,6 +323,8 @@ serve(async (req) => {
       shortest_path: Array.isArray(analysis?.shortest_path)
         ? analysis.shortest_path
         : [],
+      match_score: matchScore,
+      match_score_rationale: matchScoreRationale,
     }),
     {
       status: 200,
