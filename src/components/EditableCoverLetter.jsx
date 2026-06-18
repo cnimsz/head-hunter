@@ -110,6 +110,7 @@ export default function EditableCoverLetter({ data, onChange }) {
           <div className={label}>Bullets (3 required)</div>
           {(data.bullets || []).length < 3 && (
             <button
+              type="button"
               onClick={addBullet}
               className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
@@ -127,6 +128,7 @@ export default function EditableCoverLetter({ data, onChange }) {
               onChange={(e) => set(`bullets[${bi}]`, e.target.value)}
             />
             <button
+              type="button"
               onClick={() => removeBullet(bi)}
               className="text-xs text-red-500 hover:underline shrink-0"
             >

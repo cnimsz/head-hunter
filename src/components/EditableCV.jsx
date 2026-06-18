@@ -146,6 +146,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Experience</div>
           <button
+            type="button"
             onClick={addRole}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -162,6 +163,7 @@ export default function EditableCV({ data, onChange }) {
                 onChange={(e) => set(`experience[${ri}].company`, e.target.value)}
               />
               <button
+                type="button"
                 onClick={() => removeRole(ri)}
                 className="text-xs text-red-500 hover:underline shrink-0"
               >
@@ -209,6 +211,7 @@ export default function EditableCV({ data, onChange }) {
                   onChange={(e) => set(`experience[${ri}].bullets[${bi}]`, e.target.value)}
                 />
                 <button
+                  type="button"
                   onClick={() => removeBullet(ri, bi)}
                   className="text-xs text-red-500 hover:underline shrink-0"
                 >
@@ -217,6 +220,7 @@ export default function EditableCV({ data, onChange }) {
               </div>
             ))}
             <button
+              type="button"
               onClick={() => addBullet(ri)}
               className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
             >
@@ -230,6 +234,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Education</div>
           <button
+            type="button"
             onClick={addEdu}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -244,6 +249,7 @@ export default function EditableCV({ data, onChange }) {
               onChange={(ev) => set(`education[${ei}]`, ev.target.value)}
             />
             <button
+              type="button"
               onClick={() => removeEdu(ei)}
               className="text-xs text-red-500 hover:underline shrink-0"
             >
@@ -257,6 +263,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Skills</div>
           <button
+            type="button"
             onClick={addSkill}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -271,6 +278,7 @@ export default function EditableCV({ data, onChange }) {
               onChange={(e) => set(`skills[${si}]`, e.target.value)}
             />
             <button
+              type="button"
               onClick={() => removeSkill(si)}
               className="text-xs text-red-500 hover:underline shrink-0"
             >
@@ -284,6 +292,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Certifications</div>
           <button
+            type="button"
             onClick={() => listAdd('certifications')}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -298,6 +307,7 @@ export default function EditableCV({ data, onChange }) {
               onChange={(e) => set(`certifications[${i}]`, e.target.value)}
             />
             <button
+              type="button"
               onClick={() => listRemove('certifications', i)}
               className="text-xs text-red-500 hover:underline shrink-0"
             >
@@ -311,6 +321,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Public Speaking and Lobbying</div>
           <button
+            type="button"
             onClick={() => listAdd('publicSpeaking')}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -325,6 +336,7 @@ export default function EditableCV({ data, onChange }) {
               onChange={(e) => set(`publicSpeaking[${i}]`, e.target.value)}
             />
             <button
+              type="button"
               onClick={() => listRemove('publicSpeaking', i)}
               className="text-xs text-red-500 hover:underline shrink-0"
             >
@@ -338,6 +350,7 @@ export default function EditableCV({ data, onChange }) {
         <div className="flex items-center justify-between mb-1">
           <div className={label}>Startup Achievements</div>
           <button
+            type="button"
             onClick={achievementAdd}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -354,6 +367,7 @@ export default function EditableCV({ data, onChange }) {
                 onChange={(e) => set(`startupAchievements[${i}].title`, e.target.value)}
               />
               <button
+                type="button"
                 onClick={() => achievementRemove(i)}
                 className="text-xs text-red-500 hover:underline shrink-0"
               >

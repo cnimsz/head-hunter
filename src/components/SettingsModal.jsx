@@ -57,6 +57,7 @@ export default function SettingsModal({ onClose }) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Settings</h2>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
             className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
@@ -115,12 +116,14 @@ export default function SettingsModal({ onClose }) {
           </div>
           <div className="flex items-center gap-2 mt-3">
             <button
+              type="button"
               onClick={handleSaveProfile}
               className="px-3 py-1.5 text-xs rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
             >
               Save
             </button>
             <button
+              type="button"
               onClick={handleClearProfile}
               className="px-3 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600"
             >
@@ -143,7 +146,11 @@ export default function SettingsModal({ onClose }) {
               )}
             </div>
             {masterCV && (
-              <button onClick={handleClearCV} className="text-xs text-red-600 hover:underline">
+              <button
+                type="button"
+                onClick={handleClearCV}
+                className="text-xs text-red-600 hover:underline"
+              >
                 Clear saved CV
               </button>
             )}
@@ -159,7 +166,11 @@ export default function SettingsModal({ onClose }) {
             CV: {cvRules} · Cover letter: {clRules} · LinkedIn: {liRules}
           </div>
           {cvRules + clRules + liRules > 0 && (
-            <button onClick={handleClearLearnings} className="text-xs text-red-600 hover:underline">
+            <button
+              type="button"
+              onClick={handleClearLearnings}
+              className="text-xs text-red-600 hover:underline"
+            >
               Clear all learned rules
             </button>
           )}
@@ -173,6 +184,7 @@ export default function SettingsModal({ onClose }) {
 
         <div className="mt-4 flex items-center justify-end">
           <button
+            type="button"
             onClick={onClose}
             className="px-3 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-600"
           >

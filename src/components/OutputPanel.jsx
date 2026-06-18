@@ -105,6 +105,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
         <div className="flex gap-1">
           {TABS.map((t) => (
             <button
+              type="button"
               key={t.id}
               onClick={() => {
                 setTab(t.id);
@@ -143,12 +144,14 @@ export default function OutputPanel({ result, error, companyName, jobDescription
               (isEditing ? (
                 <>
                   <button
+                    type="button"
                     onClick={handleCancel}
                     className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={download}
                     className="px-2.5 py-1 text-xs rounded bg-blue-600 text-white border border-blue-600"
                   >
@@ -157,6 +160,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                 </>
               ) : (
                 <button
+                  type="button"
                   onClick={handleEdit}
                   className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600"
                 >
@@ -166,6 +170,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
             {!isEditing && (
               <>
                 <button
+                  type="button"
                   onClick={copy}
                   disabled={!displayText}
                   className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50"
@@ -174,6 +179,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                 </button>
                 {tab !== 'linkedIn' && (
                   <button
+                    type="button"
                     onClick={download}
                     className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-600"
                   >
@@ -182,6 +188,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                 )}
                 {tab === 'cv' && result?.cv && (
                   <button
+                    type="button"
                     onClick={() => setGapAnalysisOpen(true)}
                     className="px-2.5 py-1 text-xs rounded border border-blue-400 text-blue-700 dark:text-blue-300"
                     title="Find what the JD asks for that your CV doesn't address yet"
@@ -190,6 +197,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => setFeedbackOpen(true)}
                   className="px-2.5 py-1 text-xs rounded border border-emerald-400 text-emerald-700 dark:text-emerald-300"
                   title="Upload your edited versions to teach the skills your style"
