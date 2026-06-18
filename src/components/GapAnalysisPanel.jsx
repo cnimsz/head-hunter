@@ -85,20 +85,21 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
   const [turnstileToken, setTurnstileToken] = useState('');
   const [retailoring, setRetailoring] = useState(false);
   const hasRunRef = useRef(false);
+  // Snapshot the inputs at mount so re-renders never trigger a second (paid)
+  // gap-analysis call. The panel is opened with the values the user wants
+  // analysed; if they change, they close and re-open it.
+  const inputsRef = useRef({ tailoredCvText, jobDescription, companyName, roleTitle });
 
   useEffect(() => {
+    // StrictMode runs effects twice in dev; the ref guard ensures we only kick
+    // off the (paid) analysis once.
     if (hasRunRef.current) return;
     hasRunRef.current = true;
     let cancelled = false;
 
     (async () => {
       try {
-        const result = await runGapAnalysis({
-          tailoredCvText,
-          jobDescription,
-          companyName,
-          roleTitle
-        });
+        const result = await runGapAnalysis(inputsRef.current);
         if (cancelled) return;
         setRun(result);
         const init = {};
@@ -114,7 +115,7 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
     })();
 
     return () => { cancelled = true; };
-  }, [tailoredCvText, jobDescription, companyName, roleTitle]);
+  }, []);
 
   const addressedCount = useMemo(
     () => Object.values(findingState).filter((s) => s.status !== 'open').length,

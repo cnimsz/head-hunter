@@ -3,6 +3,7 @@ import { extractTextFromFile } from '../lib/cvParser.js';
 import { analyseRevisions } from '../lib/feedback.js';
 import { appendLearnings, getLearnings } from '../lib/learnings.js';
 import { updateProfileFromText } from '../lib/profile.js';
+import Turnstile, { resetTurnstile } from './Turnstile.jsx';
 
 const SKILLS = [
   { id: 'cv', label: 'CV', originalKey: 'cv' },
@@ -28,6 +29,7 @@ export default function FeedbackModal({ result, onClose }) {
   const [rulesText, setRulesText] = useState({ cv: '', coverLetter: '', linkedIn: '' });
   const [error, setError] = useState(null);
   const [applied, setApplied] = useState({ cv: false, coverLetter: false, linkedIn: false });
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   async function handleFile(skill, file) {
     if (!file) return;
@@ -48,11 +50,15 @@ export default function FeedbackModal({ result, onClose }) {
   async function handleAnalyse() {
     const anyRevised = Object.values(revised).some((v) => v.trim());
     if (!anyRevised) { setError('Paste or upload at least one revised version.'); return; }
+    if (!turnstileToken) { setError('Solve the bot challenge first.'); return; }
     setError(null);
     // Refresh profile from any pasted-in revisions too (file uploads already
     // update it in handleFile).
     if (revised.cv) updateProfileFromText(revised.cv);
     if (revised.coverLetter) updateProfileFromText(revised.coverLetter);
+    const tokenForCall = turnstileToken;
+    setTurnstileToken('');
+    resetTurnstile();
     setStatus('analysing');
     try {
       const out = await analyseRevisions({
@@ -61,7 +67,8 @@ export default function FeedbackModal({ result, onClose }) {
           coverLetter: result.coverLetter,
           linkedIn: result.linkedInMessage
         },
-        revised
+        revised,
+        turnstileToken: tokenForCall
       });
       setAnalysis(out);
       setRulesText({
@@ -122,12 +129,21 @@ export default function FeedbackModal({ result, onClose }) {
               </div>
             ))}
 
+            <div className="mb-3">
+              <Turnstile
+                onToken={setTurnstileToken}
+                onExpire={() => setTurnstileToken('')}
+                onError={() => setTurnstileToken('')}
+              />
+            </div>
+
             {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
 
             <div className="flex gap-2">
               <button
                 onClick={handleAnalyse}
-                className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium"
+                disabled={!turnstileToken}
+                className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Analyse changes
               </button>

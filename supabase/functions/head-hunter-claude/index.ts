@@ -200,7 +200,7 @@ serve(async (req) => {
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
-    console.error("Server misconfiguration: HEAD_HUNTER secret not set");
+    console.error("Server misconfiguration: ANTHROPIC_API_KEY secret not set");
     return jsonError(500, "Server misconfigured", corsHeaders);
   }
 

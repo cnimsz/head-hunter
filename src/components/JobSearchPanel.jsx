@@ -72,10 +72,18 @@ function PanelBody({ onClose, seedJDText }) {
   const [exhausted, setExhausted] = useState(false);
   const hasRunRef = useRef(false);
 
+  // Snapshot seedJDText at mount so the effect only depends on values captured
+  // when the panel was opened. Re-running on prop change would fire another
+  // paid model call.
+  const seedJDTextRef = useRef(seedJDText);
+
   useEffect(() => {
+    // StrictMode runs effects twice in dev; the ref guard ensures we only kick
+    // off the (paid) refresh once.
     if (hasRunRef.current) return;
     hasRunRef.current = true;
     let cancelled = false;
+    const seed = seedJDTextRef.current;
 
     (async () => {
       try {
@@ -90,12 +98,12 @@ function PanelBody({ onClose, seedJDText }) {
         // If the user opened Find Roles with a JD in the textarea we always
         // refresh — the JD is a fresh signal that should bias this open even
         // if the pool was already full from earlier.
-        if (list.length >= TARGET_ACTIVE && !seedJDText) {
+        if (list.length >= TARGET_ACTIVE && !seed) {
           setCandidates(list);
           setLoading(false);
           return;
         }
-        const refreshed = await refreshCandidates({ currentJDText: seedJDText });
+        const refreshed = await refreshCandidates({ currentJDText: seed });
         if (cancelled) return;
         setCandidates(refreshed.candidates || []);
         if ((refreshed.candidates || []).length === 0) setExhausted(true);

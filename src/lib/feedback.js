@@ -7,11 +7,11 @@ function extractJson(text) {
   return JSON.parse(candidate);
 }
 
-export async function analyseRevisions({ originals, revised }) {
+export async function analyseRevisions({ originals, revised, turnstileToken }) {
   const prompt = buildFeedbackPrompt({ originals, revised });
-  const raw = await callClaude({ prompt });
+  const { text } = await callClaude({ prompt, turnstileToken });
   try {
-    return extractJson(raw);
+    return extractJson(text);
   } catch {
     throw new Error('Could not parse feedback analysis from Claude.');
   }

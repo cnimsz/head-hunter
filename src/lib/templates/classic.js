@@ -66,6 +66,15 @@ function cvJobTitleLine(text) {
   });
 }
 
+function roleTitleLine(role) {
+  const dates = role.startDate && role.endDate
+    ? `${role.startDate} – ${role.endDate}`
+    : (role.startDate || role.endDate || '');
+  const parts = [role.title, role.location, dates].filter(Boolean);
+  if (parts.length) return parts.join(' | ');
+  return role.titleLine || '';
+}
+
 function cvBullet(text) {
   return new Paragraph({
     children: [run(text, { size: pt(T.sizes.bullet) })],
@@ -133,7 +142,7 @@ export function renderCV(data) {
     out.push(cvSectionHeader('EXPERIENCE'));
     data.experience.forEach((role, i) => {
       out.push(cvCompany(role.company, { firstInSection: i === 0 }));
-      out.push(cvJobTitleLine(role.titleLine));
+      out.push(cvJobTitleLine(roleTitleLine(role)));
       for (const b of role.bullets || []) out.push(cvBullet(b));
     });
   }
