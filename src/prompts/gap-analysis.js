@@ -25,13 +25,14 @@ ${previouslyDismissed.map((t) => `- ${t}`).join('\n')}`
   const company = (companyName || '').trim() || 'the hiring company';
   const role = (roleTitle || '').trim() || 'this role';
 
-  const master = masterCvText && masterCvText.trim()
-    ? `
+  const master =
+    masterCvText && masterCvText.trim()
+      ? `
 
 ### Master CV (full background — use to spot "hiding-in-background" content the tailored CV omitted)
 
 ${masterCvText}`
-    : '';
+      : '';
 
   return `You are a senior recruiter and career advisor running a focused gap analysis between a candidate's tailored CV and a specific job description. Your output is read directly by the candidate — be direct, named-specific, and honest. Never lecture, never preamble. Some jobs might be posted by a recruiter, be careful that the analysis does not mistake the recruiter or middleman for the target company. The target company may be confidential, but analysis should always be directed towards them.
 

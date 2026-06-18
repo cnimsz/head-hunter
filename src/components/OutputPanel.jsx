@@ -89,10 +89,14 @@ export default function OutputPanel({ result, error, companyName, jobDescription
   function handleTemplateChange(e) {
     const v = e.target.value;
     setTemplate(v);
-    try { localStorage.setItem(TEMPLATE_KEY, v); } catch {}
+    try {
+      localStorage.setItem(TEMPLATE_KEY, v);
+    } catch {}
   }
 
-  const canEdit = result && tab !== 'linkedIn' &&
+  const canEdit =
+    result &&
+    tab !== 'linkedIn' &&
     ((tab === 'cv' && result.cvData) || (tab === 'coverLetter' && result.clData));
 
   return (
@@ -102,7 +106,10 @@ export default function OutputPanel({ result, error, companyName, jobDescription
           {TABS.map((t) => (
             <button
               key={t.id}
-              onClick={() => { setTab(t.id); setIsEditing(false); }}
+              onClick={() => {
+                setTab(t.id);
+                setIsEditing(false);
+              }}
               className={`px-3 py-1.5 text-sm rounded ${
                 tab === t.id
                   ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
@@ -125,13 +132,15 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                   title="Visual template for the downloaded .docx"
                 >
                   {TEMPLATES.map((t) => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
               </label>
             )}
-            {canEdit && (
-              isEditing ? (
+            {canEdit &&
+              (isEditing ? (
                 <>
                   <button
                     onClick={handleCancel}
@@ -153,8 +162,7 @@ export default function OutputPanel({ result, error, companyName, jobDescription
                 >
                   Edit
                 </button>
-              )
-            )}
+              ))}
             {!isEditing && (
               <>
                 <button
@@ -224,7 +232,11 @@ export default function OutputPanel({ result, error, companyName, jobDescription
         </div>
       ) : (
         <div className="flex-1 whitespace-pre-wrap font-mono text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-3 overflow-auto">
-          {displayText || <span className="text-slate-400 font-sans">Output will appear here after you click Generate.</span>}
+          {displayText || (
+            <span className="text-slate-400 font-sans">
+              Output will appear here after you click Generate.
+            </span>
+          )}
         </div>
       )}
 
@@ -254,9 +266,10 @@ function splitCompanyAndRole(value) {
 
 function roleSubline(role) {
   if (!role) return '';
-  const dates = role.startDate && role.endDate
-    ? `${role.startDate} – ${role.endDate}`
-    : (role.startDate || role.endDate || '');
+  const dates =
+    role.startDate && role.endDate
+      ? `${role.startDate} – ${role.endDate}`
+      : role.startDate || role.endDate || '';
   const parts = [role.title, role.location, dates].filter(Boolean);
   if (parts.length) return parts.join(' · ');
   return role.titleLine || '';
@@ -273,13 +286,17 @@ function CVDisplay({ data }) {
 
       {data.experience?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Experience</h2>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Experience
+          </h2>
           {data.experience.map((role, i) => (
             <div key={i} className="mb-3">
               <p className="font-bold">{role.company}</p>
               <p className="text-slate-600 dark:text-slate-400">{roleSubline(role)}</p>
               <ul className="list-disc pl-5 mt-1 space-y-0.5">
-                {(role.bullets || []).map((b, j) => <li key={j}>{b}</li>)}
+                {(role.bullets || []).map((b, j) => (
+                  <li key={j}>{b}</li>
+                ))}
               </ul>
             </div>
           ))}
@@ -288,39 +305,57 @@ function CVDisplay({ data }) {
 
       {data.education?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Education</h2>
-          {data.education.map((e, i) => <p key={i}>{e}</p>)}
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Education
+          </h2>
+          {data.education.map((e, i) => (
+            <p key={i}>{e}</p>
+          ))}
         </>
       )}
 
       {data.skills?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Skills</h2>
-          {data.skills.map((s, i) => <p key={i}>{s}</p>)}
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Skills
+          </h2>
+          {data.skills.map((s, i) => (
+            <p key={i}>{s}</p>
+          ))}
         </>
       )}
 
       {data.certifications?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Certifications</h2>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Certifications
+          </h2>
           <ul className="list-disc pl-5 space-y-0.5">
-            {data.certifications.map((c, i) => <li key={i}>{c}</li>)}
+            {data.certifications.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
           </ul>
         </>
       )}
 
       {data.publicSpeaking?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Public Speaking and Lobbying</h2>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Public Speaking and Lobbying
+          </h2>
           <ul className="list-disc pl-5 space-y-0.5">
-            {data.publicSpeaking.map((p, i) => <li key={i}>{p}</li>)}
+            {data.publicSpeaking.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
           </ul>
         </>
       )}
 
       {data.startupAchievements?.length > 0 && (
         <>
-          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">Startup Achievements</h2>
+          <h2 className="font-bold text-xs uppercase tracking-wide border-b border-slate-300 dark:border-slate-600 pb-1 mt-4">
+            Startup Achievements
+          </h2>
           {data.startupAchievements.map((a, i) => (
             <div key={i} className="mb-2">
               <p className="font-bold">{a.title}</p>
@@ -357,7 +392,9 @@ function CoverLetterDisplay({ data }) {
       <p className="whitespace-pre-wrap">{data.openingParagraph}</p>
 
       <ul className="list-disc pl-5 space-y-2">
-        {(data.bullets || []).map((b, i) => <li key={i}>{b}</li>)}
+        {(data.bullets || []).map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
       </ul>
 
       <p className="whitespace-pre-wrap">{data.closingParagraph}</p>
@@ -408,8 +445,18 @@ function LinkedInView({ result }) {
       <Section title="Hiring Manager">
         {hm ? (
           <dl className="text-sm grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
-            {hm.name && (<><dt className="text-slate-500">Name</dt><dd>{hm.name}</dd></>)}
-            {hm.title && (<><dt className="text-slate-500">Title</dt><dd>{hm.title}</dd></>)}
+            {hm.name && (
+              <>
+                <dt className="text-slate-500">Name</dt>
+                <dd>{hm.name}</dd>
+              </>
+            )}
+            {hm.title && (
+              <>
+                <dt className="text-slate-500">Title</dt>
+                <dd>{hm.title}</dd>
+              </>
+            )}
             {isLinkedInProfileUrl(hm.linkedInUrl) && (
               <>
                 <dt className="text-slate-500">LinkedIn</dt>
@@ -425,8 +472,18 @@ function LinkedInView({ result }) {
                 </dd>
               </>
             )}
-            {hm.confidence && (<><dt className="text-slate-500">Confidence</dt><dd>{hm.confidence}</dd></>)}
-            {hm.rationale && (<><dt className="text-slate-500">Rationale</dt><dd>{hm.rationale}</dd></>)}
+            {hm.confidence && (
+              <>
+                <dt className="text-slate-500">Confidence</dt>
+                <dd>{hm.confidence}</dd>
+              </>
+            )}
+            {hm.rationale && (
+              <>
+                <dt className="text-slate-500">Rationale</dt>
+                <dd>{hm.rationale}</dd>
+              </>
+            )}
           </dl>
         ) : (
           <div className="text-sm text-slate-400">Not identified.</div>
@@ -445,7 +502,9 @@ function LinkedInView({ result }) {
 function Section({ title, children }) {
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded p-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{title}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+        {title}
+      </div>
       {children}
     </div>
   );

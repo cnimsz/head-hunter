@@ -64,9 +64,17 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
         {status !== 'done' && (
           <>
             <ol className="text-sm text-slate-600 dark:text-slate-300 list-decimal list-inside space-y-1 mb-4">
-              <li>Gather any number of your CVs (up to {MAX_CVS}) in PDF, DOCX, TXT or MD format.</li>
-              <li>Put them all into a single folder and compress that folder into a <strong>.zip</strong> file.</li>
-              <li>Upload the .zip below. We'll unzip, review every CV, and synthesise one comprehensive Master CV.</li>
+              <li>
+                Gather any number of your CVs (up to {MAX_CVS}) in PDF, DOCX, TXT or MD format.
+              </li>
+              <li>
+                Put them all into a single folder and compress that folder into a{' '}
+                <strong>.zip</strong> file.
+              </li>
+              <li>
+                Upload the .zip below. We'll unzip, review every CV, and synthesise one
+                comprehensive Master CV.
+              </li>
             </ol>
 
             <input
@@ -130,7 +138,8 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
         {status === 'done' && result && (
           <>
             <p className="text-sm text-emerald-600 mb-3">
-              Master CV compiled from {result.count} source CV(s) and saved. It is now selected as your saved CV.
+              Master CV compiled from {result.count} source CV(s) and saved. It is now selected as
+              your saved CV.
             </p>
             <textarea
               readOnly

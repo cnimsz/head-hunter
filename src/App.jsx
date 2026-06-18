@@ -116,10 +116,7 @@ export default function App() {
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {jobSearchOpen && (
-        <JobSearchPanel
-          seedJDText={jobSearchSeedJD}
-          onClose={() => setJobSearchOpen(false)}
-        />
+        <JobSearchPanel seedJDText={jobSearchSeedJD} onClose={() => setJobSearchOpen(false)} />
       )}
     </div>
   );

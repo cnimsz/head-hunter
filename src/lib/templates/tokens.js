@@ -27,14 +27,23 @@ export const EXECUTIVE = {
   label: 'Executive',
   fonts: { body: 'Georgia', heading: 'Calibri', name: 'Georgia' },
   sizes: {
-    name: 22, subline: 12, contact: 10,
-    sectionHeader: 11, body: 11, bullet: 11,
-    roleTitle: 11.5, roleDates: 10.5,
+    name: 22,
+    subline: 12,
+    contact: 10,
+    sectionHeader: 11,
+    body: 11,
+    bullet: 11,
+    roleTitle: 11.5,
+    roleDates: 10.5,
     letterheadName: 16
   },
   color: {
-    name: '0B2545', header: '0B2545', body: '111827',
-    subline: '333333', contact: '555555', accent: '0B2545'
+    name: '0B2545',
+    header: '0B2545',
+    body: '111827',
+    subline: '333333',
+    contact: '555555',
+    accent: '0B2545'
   },
   page: { marginTwips: 1020 },
   summaryShading: 'F5F5F0',

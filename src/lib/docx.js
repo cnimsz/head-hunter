@@ -20,7 +20,13 @@ function buildDocFrom(result) {
 }
 
 function safeFilename(s) {
-  return (s || 'output').replace(/[^a-z0-9_]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 60) || 'output';
+  return (
+    (s || 'output')
+      .replace(/[^a-z0-9_]+/gi, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 60) || 'output'
+  );
 }
 
 function suffix({ companyAndRole } = {}) {

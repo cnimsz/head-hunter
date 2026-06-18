@@ -2,7 +2,7 @@ const KEY = 'cv-toolkit:profile';
 
 const EMAIL_RE = /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/;
 const LINKEDIN_RE = /(?:https?:\/\/)?(?:[\w-]+\.)?linkedin\.com\/in\/[\w-]+\/?/i;
-const PHONE_RE = /(?:\+\d{1,3}[\s.\-]?)?(?:\(\d{1,4}\)[\s.\-]?)?\d{2,4}[\s.\-]?\d{2,4}[\s.\-]?\d{2,5}/;
+const PHONE_RE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)[\s.-]?)?\d{2,4}[\s.-]?\d{2,4}[\s.-]?\d{2,5}/;
 
 export function getProfile() {
   try {
@@ -37,7 +37,7 @@ function looksLikeName(line) {
   if (line.length > 60) return false;
   const words = line.trim().split(/\s+/);
   if (words.length < 2 || words.length > 5) return false;
-  return words.every((w) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ''.\-]+$/.test(w));
+  return words.every((w) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.-]+$/.test(w));
 }
 
 function stripContactTokens(contactLine, { email, phone, linkedin }) {
@@ -68,9 +68,7 @@ export function extractProfileFromText(text) {
 
   const email = (contactLine.match(EMAIL_RE) || text.match(EMAIL_RE) || [''])[0];
   const linkedinRaw = (contactLine.match(LINKEDIN_RE) || text.match(LINKEDIN_RE) || [''])[0];
-  const linkedin = linkedinRaw
-    ? linkedinRaw.replace(/^https?:\/\//i, '').replace(/\/$/, '')
-    : '';
+  const linkedin = linkedinRaw ? linkedinRaw.replace(/^https?:\/\//i, '').replace(/\/$/, '') : '';
 
   // Run phone regex but avoid matching the email, linkedin, or dates.
   let phone = '';
@@ -105,9 +103,7 @@ export function extractProfileFromText(text) {
     }
   }
 
-  const location = contactLine
-    ? stripContactTokens(contactLine, { email, phone, linkedin })
-    : '';
+  const location = contactLine ? stripContactTokens(contactLine, { email, phone, linkedin }) : '';
 
   const out = {};
   if (name) out.name = name;

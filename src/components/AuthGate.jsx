@@ -83,12 +83,15 @@ export default function AuthGate({ title = 'Sign in to continue', subtitle, chil
       {sent ? (
         <div className="space-y-3">
           <div className="text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900 rounded p-3">
-            Magic link sent to <strong>{email.trim()}</strong>. Open it on this device — this
-            panel will refresh automatically once you're signed in.
+            Magic link sent to <strong>{email.trim()}</strong>. Open it on this device — this panel
+            will refresh automatically once you're signed in.
           </div>
           <button
             type="button"
-            onClick={() => { setSent(false); setEmail(''); }}
+            onClick={() => {
+              setSent(false);
+              setEmail('');
+            }}
             className="text-xs text-slate-500 underline"
           >
             Use a different email

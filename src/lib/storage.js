@@ -8,9 +8,13 @@ export function getMasterCV() {
   const raw = localStorage.getItem(k('cv'));
   return raw ? JSON.parse(raw) : null;
 }
-export function clearMasterCV() { localStorage.removeItem(k('cv')); }
+export function clearMasterCV() {
+  localStorage.removeItem(k('cv'));
+}
 
-export function saveTheme(theme) { localStorage.setItem(k('theme'), theme); }
+export function saveTheme(theme) {
+  localStorage.setItem(k('theme'), theme);
+}
 export function getTheme() {
   const t = localStorage.getItem(k('theme'));
   if (t === 'light' || t === 'dark') return t;

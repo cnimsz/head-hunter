@@ -10,13 +10,13 @@ export const RESEARCH_MODEL = 'claude-haiku-4-5-20251001';
 export const MAX_TOKENS = 8000;
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-export const EDGE_FN_URL = SUPABASE_URL
-  ? `${SUPABASE_URL}/functions/v1/head-hunter-claude`
-  : '';
+export const EDGE_FN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/head-hunter-claude` : '';
 
 async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken, model }) {
   if (!EDGE_FN_URL) {
-    throw new Error('VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).');
+    throw new Error(
+      'VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).'
+    );
   }
   const payload = {
     model: model || MODEL,
@@ -44,9 +44,11 @@ async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToke
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('Bot challenge failed or session expired. Refresh and retry.');
+    if (res.status === 401)
+      throw new Error('Bot challenge failed or session expired. Refresh and retry.');
     if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
-    if (res.status === 413) throw new Error('Your CV or job description is too long. Trim and retry.');
+    if (res.status === 413)
+      throw new Error('Your CV or job description is too long. Trim and retry.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
 
@@ -76,7 +78,10 @@ function sanitizeDashes(value) {
 
 function extractJson(text) {
   // Strip markdown fences
-  let clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  let clean = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
 
   // Extract the outermost JSON object
   const start = clean.indexOf('{');
@@ -125,9 +130,10 @@ function clDataToText(d) {
 
 function roleSublineText(role) {
   if (!role) return '';
-  const dates = role.startDate && role.endDate
-    ? `${role.startDate} - ${role.endDate}`
-    : (role.startDate || role.endDate || '');
+  const dates =
+    role.startDate && role.endDate
+      ? `${role.startDate} - ${role.endDate}`
+      : role.startDate || role.endDate || '';
   const parts = [role.title, role.location, dates].filter(Boolean);
   if (parts.length) return parts.join(' · ');
   return role.titleLine || '';
@@ -187,7 +193,11 @@ export async function generateApplication({
 
   onStep('cv');
   const cvCall = await callClaude({
-    prompt: buildCVPrompt({ jobDescription, masterCV: cvText, learnings: formatLearningsBlock('cv') }),
+    prompt: buildCVPrompt({
+      jobDescription,
+      masterCV: cvText,
+      learnings: formatLearningsBlock('cv')
+    }),
     masterCV: cvText,
     turnstileToken
   });

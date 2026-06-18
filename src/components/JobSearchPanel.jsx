@@ -114,7 +114,9 @@ function PanelBody({ onClose, seedJDText }) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleFeedbackSubmit({ candidate, action, reasonCode, freeText }) {
@@ -269,8 +271,8 @@ function EmptySlot({ exhausted, busy }) {
       {busy
         ? 'Finding more roles…'
         : exhausted
-        ? 'No new roles right now — check back later.'
-        : 'Finding more roles…'}
+          ? 'No new roles right now — check back later.'
+          : 'Finding more roles…'}
     </div>
   );
 }
@@ -279,11 +281,9 @@ function FeedbackModal({ candidate, action, busy, onCancel, onSubmit }) {
   const [reasonCode, setReasonCode] = useState('');
   const [freeText, setFreeText] = useState('');
   const reasons = action === 'apply' ? APPLY_REASONS : PASS_REASONS;
-  const title =
-    action === 'apply' ? 'What made this role appealing?' : 'Why pass on this role?';
+  const title = action === 'apply' ? 'What made this role appealing?' : 'Why pass on this role?';
   const requiresFreeText = reasonCode === 'other';
-  const submitDisabled =
-    busy || !reasonCode || (requiresFreeText && !freeText.trim());
+  const submitDisabled = busy || !reasonCode || (requiresFreeText && !freeText.trim());
 
   function handleSubmit(e) {
     e.preventDefault();

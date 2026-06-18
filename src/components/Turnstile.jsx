@@ -9,9 +9,15 @@ export default function Turnstile({ onToken, onExpire, onError, theme = 'auto' }
   const onTokenRef = useRef(onToken);
   const onExpireRef = useRef(onExpire);
   const onErrorRef = useRef(onError);
-  useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
-  useEffect(() => { onExpireRef.current = onExpire; }, [onExpire]);
-  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => {
+    onTokenRef.current = onToken;
+  }, [onToken]);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     if (!SITE_KEY) {

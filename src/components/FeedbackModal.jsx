@@ -18,7 +18,12 @@ function formatRules(rules) {
 function parseRules(text) {
   return (text || '')
     .split(/\r?\n/)
-    .map((line) => line.trim().replace(/^\d+[.)]\s*/, '').trim())
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^\d+[.)]\s*/, '')
+        .trim()
+    )
     .filter(Boolean);
 }
 
@@ -49,8 +54,14 @@ export default function FeedbackModal({ result, onClose }) {
 
   async function handleAnalyse() {
     const anyRevised = Object.values(revised).some((v) => v.trim());
-    if (!anyRevised) { setError('Paste or upload at least one revised version.'); return; }
-    if (!turnstileToken) { setError('Solve the bot challenge first.'); return; }
+    if (!anyRevised) {
+      setError('Paste or upload at least one revised version.');
+      return;
+    }
+    if (!turnstileToken) {
+      setError('Solve the bot challenge first.');
+      return;
+    }
     setError(null);
     // Refresh profile from any pasted-in revisions too (file uploads already
     // update it in handleFile).
@@ -106,7 +117,13 @@ export default function FeedbackModal({ result, onClose }) {
               generations reflect your preferences.
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Close">✕</button>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600"
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
 
         {status === 'input' && (
@@ -157,15 +174,13 @@ export default function FeedbackModal({ result, onClose }) {
           </>
         )}
 
-        {status === 'analysing' && (
-          <p className="text-sm text-slate-500">Analysing changes…</p>
-        )}
+        {status === 'analysing' && <p className="text-sm text-slate-500">Analysing changes…</p>}
 
         {status === 'review' && analysis && (
           <>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-              Review the rules Claude proposed. Edit, reorder, or delete lines before applying.
-              Each numbered line becomes one rule. Apply per skill, or all at once.
+              Review the rules Claude proposed. Edit, reorder, or delete lines before applying. Each
+              numbered line becomes one rule. Apply per skill, or all at once.
             </p>
             {SKILLS.map((s) => {
               const a = analysis[s.id] || {};
@@ -173,7 +188,10 @@ export default function FeedbackModal({ result, onClose }) {
               const isApplied = applied[s.id];
               const parsedCount = parseRules(rulesText[s.id]).length;
               return (
-                <div key={s.id} className="mb-4 border border-slate-200 dark:border-slate-700 rounded p-3">
+                <div
+                  key={s.id}
+                  className="mb-4 border border-slate-200 dark:border-slate-700 rounded p-3"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold">{s.label}</h3>
                     <button

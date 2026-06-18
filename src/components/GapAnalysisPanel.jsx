@@ -77,7 +77,14 @@ function FloatingCloseButton({ onClose }) {
   );
 }
 
-function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onRetailor, onClose }) {
+function PanelBody({
+  tailoredCvText,
+  jobDescription,
+  companyName,
+  roleTitle,
+  onRetailor,
+  onClose
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [run, setRun] = useState(null); // { run_id, findings, reframe, shortest_path }
@@ -114,7 +121,9 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const addressedCount = useMemo(
@@ -219,8 +228,8 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
         {canRetailor && (
           <div className="space-y-2">
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              {appliedCount} answer{appliedCount === 1 ? '' : 's'} added to your Master CV.
-              Solve the bot challenge to re-tailor your CV with the new info.
+              {appliedCount} answer{appliedCount === 1 ? '' : 's'} added to your Master CV. Solve
+              the bot challenge to re-tailor your CV with the new info.
             </p>
             <Turnstile
               onToken={setTurnstileToken}
@@ -239,11 +248,7 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
             disabled={retailoring || (canRetailor && !retailorReady)}
             className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {retailoring
-              ? 'Re-tailoring…'
-              : canRetailor
-                ? 'Done & Re-tailor'
-                : 'Done'}
+            {retailoring ? 'Re-tailoring…' : canRetailor ? 'Done & Re-tailor' : 'Done'}
           </button>
         </div>
       </div>
@@ -251,7 +256,14 @@ function PanelBody({ tailoredCvText, jobDescription, companyName, roleTitle, onR
   );
 }
 
-function Header({ companyName, roleTitle, totalGaps, addressedCount, matchScore, matchScoreRationale }) {
+function Header({
+  companyName,
+  roleTitle,
+  totalGaps,
+  addressedCount,
+  matchScore,
+  matchScoreRationale
+}) {
   const subject = [companyName, roleTitle].filter(Boolean).join(' · ') || 'Tailored CV';
   return (
     <div className="px-5 pt-5 pb-3 border-b border-slate-200 dark:border-slate-800">
@@ -260,9 +272,7 @@ function Header({ companyName, roleTitle, totalGaps, addressedCount, matchScore,
           <h2 className="text-lg font-semibold">Gap Analysis</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subject}</p>
         </div>
-        {typeof matchScore === 'number' && (
-          <MatchScoreBadge score={matchScore} />
-        )}
+        {typeof matchScore === 'number' && <MatchScoreBadge score={matchScore} />}
       </div>
       {typeof matchScore === 'number' && matchScoreRationale && (
         <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 italic">
@@ -290,7 +300,10 @@ function MatchScoreBadge({ score }) {
       className={`flex flex-col items-center justify-center border rounded px-3 py-1.5 min-w-[72px] ${tone}`}
       title="Estimated match between this tailored CV and the JD, before gap answers are applied."
     >
-      <span className="text-xl font-bold leading-none">{score}<span className="text-xs font-medium">%</span></span>
+      <span className="text-xl font-bold leading-none">
+        {score}
+        <span className="text-xs font-medium">%</span>
+      </span>
       <span className="text-[10px] uppercase tracking-wide mt-0.5">Match</span>
     </div>
   );
@@ -384,7 +397,9 @@ function GapCard({ finding, state, onChange }) {
       {finding.gap_rationale && (
         <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">{finding.gap_rationale}</p>
       )}
-      <p className="text-sm italic text-slate-700 dark:text-slate-200 mt-2">{finding.gap_question}</p>
+      <p className="text-sm italic text-slate-700 dark:text-slate-200 mt-2">
+        {finding.gap_question}
+      </p>
 
       <textarea
         value={answer}

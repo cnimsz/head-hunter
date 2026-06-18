@@ -1,6 +1,4 @@
-import {
-  Paragraph, TextRun, AlignmentType, BorderStyle, LevelFormat
-} from 'docx';
+import { Paragraph, TextRun, AlignmentType, BorderStyle, LevelFormat } from 'docx';
 import { CLASSIC as T } from './tokens.js';
 
 const FONT = T.fonts.body;
@@ -67,9 +65,10 @@ function cvJobTitleLine(text) {
 }
 
 function roleTitleLine(role) {
-  const dates = role.startDate && role.endDate
-    ? `${role.startDate} – ${role.endDate}`
-    : (role.startDate || role.endDate || '');
+  const dates =
+    role.startDate && role.endDate
+      ? `${role.startDate} – ${role.endDate}`
+      : role.startDate || role.endDate || '';
   const parts = [role.title, role.location, dates].filter(Boolean);
   if (parts.length) return parts.join(' | ');
   return role.titleLine || '';
@@ -170,10 +169,12 @@ export function renderCV(data) {
   if (data.startupAchievements?.length) {
     out.push(cvSectionHeader('STARTUP ACHIEVEMENTS'));
     data.startupAchievements.forEach((a, i) => {
-      out.push(para({
-        children: [run(a.title || '', { size: pt(T.sizes.sectionHeader), bold: true })],
-        spacing: { before: i === 0 ? 0 : sp(6), after: 0 }
-      }));
+      out.push(
+        para({
+          children: [run(a.title || '', { size: pt(T.sizes.sectionHeader), bold: true })],
+          spacing: { before: i === 0 ? 0 : sp(6), after: 0 }
+        })
+      );
       if (a.body) out.push(cvBody(a.body));
     });
   }
@@ -188,75 +189,95 @@ export function renderCV(data) {
 export function renderCL(data) {
   const out = [];
 
-  out.push(para({
-    children: [run(data.senderName || '', { size: pt(12), bold: true })],
-    spacing: { after: 0 }
-  }));
+  out.push(
+    para({
+      children: [run(data.senderName || '', { size: pt(12), bold: true })],
+      spacing: { after: 0 }
+    })
+  );
 
-  out.push(para({
-    children: [run(data.senderContact || '', { size: pt(10) })],
-    spacing: { after: sp(24) }
-  }));
+  out.push(
+    para({
+      children: [run(data.senderContact || '', { size: pt(10) })],
+      spacing: { after: sp(24) }
+    })
+  );
 
-  out.push(para({
-    children: [run(data.date || '', { size: pt(11) })],
-    spacing: { after: sp(24) }
-  }));
+  out.push(
+    para({
+      children: [run(data.date || '', { size: pt(11) })],
+      spacing: { after: sp(24) }
+    })
+  );
 
   const r = data.recipient || {};
   const recipientLines = [r.name, r.title, r.company, r.location].filter(Boolean);
   recipientLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: { after: i === recipientLines.length - 1 ? sp(24) : 0 }
-    }));
+    out.push(
+      para({
+        children: [run(line, { size: pt(11) })],
+        spacing: { after: i === recipientLines.length - 1 ? sp(24) : 0 }
+      })
+    );
   });
   if (!recipientLines.length) {
     out.push(para({ children: [run('')], spacing: { after: sp(24) } }));
   }
 
-  out.push(para({
-    children: [run(data.salutation || 'Dear Hiring Team,', { size: pt(11) })],
-    spacing: { after: sp(12) }
-  }));
+  out.push(
+    para({
+      children: [run(data.salutation || 'Dear Hiring Team,', { size: pt(11) })],
+      spacing: { after: sp(12) }
+    })
+  );
 
   const openingLines = (data.openingParagraph || '').split('\n');
   openingLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: { after: i === openingLines.length - 1 ? sp(12) : 0 }
-    }));
+    out.push(
+      para({
+        children: [run(line, { size: pt(11) })],
+        spacing: { after: i === openingLines.length - 1 ? sp(12) : 0 }
+      })
+    );
   });
 
   for (const b of data.bullets || []) {
-    out.push(new Paragraph({
-      children: [run(b, { size: pt(11) })],
-      spacing: { after: sp(6) },
-      alignment: AlignmentType.LEFT,
-      numbering: { reference: 'cl-bullets', level: 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [run(b, { size: pt(11) })],
+        spacing: { after: sp(6) },
+        alignment: AlignmentType.LEFT,
+        numbering: { reference: 'cl-bullets', level: 0 }
+      })
+    );
   }
 
   const closingLines = (data.closingParagraph || '').split('\n');
   closingLines.forEach((line, i) => {
-    out.push(para({
-      children: [run(line, { size: pt(11) })],
-      spacing: {
-        before: i === 0 ? sp(12) : 0,
-        after: i === closingLines.length - 1 ? sp(12) : sp(6)
-      }
-    }));
+    out.push(
+      para({
+        children: [run(line, { size: pt(11) })],
+        spacing: {
+          before: i === 0 ? sp(12) : 0,
+          after: i === closingLines.length - 1 ? sp(12) : sp(6)
+        }
+      })
+    );
   });
 
-  out.push(para({
-    children: [run('Best regards,', { size: pt(11) })],
-    spacing: { after: sp(24) }
-  }));
+  out.push(
+    para({
+      children: [run('Best regards,', { size: pt(11) })],
+      spacing: { after: sp(24) }
+    })
+  );
 
-  out.push(para({
-    children: [run(data.signatureName || data.senderName || '', { size: pt(11), bold: true })],
-    spacing: { after: 0 }
-  }));
+  out.push(
+    para({
+      children: [run(data.signatureName || data.senderName || '', { size: pt(11), bold: true })],
+      spacing: { after: 0 }
+    })
+  );
 
   return {
     styles: buildStyles(),

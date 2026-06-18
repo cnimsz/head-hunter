@@ -30,7 +30,9 @@ export async function runGapAnalysis({
   const fnUrl = gapAnalysisFunctionUrl();
   if (!fnUrl) throw new Error('Supabase URL not configured.');
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
   if (!session) throw new Error('Not signed in.');
   const userId = session.user.id;
 
@@ -97,10 +99,7 @@ export async function updateFinding(findingId, patch) {
   if (patch.status && patch.status !== 'open' && !patch.answered_at) {
     update.answered_at = new Date().toISOString();
   }
-  const { error } = await supabase
-    .from('gap_analysis_findings')
-    .update(update)
-    .eq('id', findingId);
+  const { error } = await supabase.from('gap_analysis_findings').update(update).eq('id', findingId);
   if (error) throw new Error(error.message);
 }
 
@@ -142,17 +141,12 @@ export function appendAnswerToMasterCV({ gapTitle, gapQuestion, userAnswer }) {
   if (!answer) throw new Error('Answer is empty.');
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const entry =
-    `- **${gapTitle}** (${stamp})\n` +
-    `  Q: ${gapQuestion}\n` +
-    `  A: ${answer}`;
+  const entry = `- **${gapTitle}** (${stamp})\n` + `  Q: ${gapQuestion}\n` + `  A: ${answer}`;
 
   let updatedText;
   if (current.text.includes(MASTER_UPDATES_HEADER)) {
     // Append to the existing section, just below the header + preamble line.
-    const re = new RegExp(
-      `(${escapeRegExp(MASTER_UPDATES_HEADER)}[^\\n]*\\n(?:[^\\n]*\\n)?)`
-    );
+    const re = new RegExp(`(${escapeRegExp(MASTER_UPDATES_HEADER)}[^\\n]*\\n(?:[^\\n]*\\n)?)`);
     if (re.test(current.text)) {
       updatedText = current.text.replace(re, `$1${entry}\n`);
     } else {

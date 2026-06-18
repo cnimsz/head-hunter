@@ -69,7 +69,9 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
 export async function compileMasterCV({ cvs, turnstileToken }) {
   if (!turnstileToken) throw new Error('Bot challenge required. Solve the challenge and retry.');
   if (!EDGE_FN_URL) {
-    throw new Error('VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).');
+    throw new Error(
+      'VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).'
+    );
   }
 
   const prompt = buildMasterCVPrompt({ cvs });

@@ -105,7 +105,9 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
         className="w-full min-h-[220px] px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
       />
 
-      <label className="text-sm font-medium mt-2">Company Name and Job Title <span className="text-slate-400 font-normal">(optional)</span></label>
+      <label className="text-sm font-medium mt-2">
+        Company Name and Job Title <span className="text-slate-400 font-normal">(optional)</span>
+      </label>
       <input
         type="text"
         value={companyName}
@@ -136,7 +138,11 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
               className="mt-0.5"
             />
             <span className="text-slate-700 dark:text-slate-200">
-              <strong>Required.</strong> I consent to (1) this app storing my Master CV, profile details, and learned style preferences in this browser's local storage, and (2) my job description and CV text being sent to Anthropic (via a Supabase proxy) as necessary for the app to generate tailored documents. Unchecking this box will permanently delete all data this app has stored in this browser.
+              <strong>Required.</strong> I consent to (1) this app storing my Master CV, profile
+              details, and learned style preferences in this browser's local storage, and (2) my job
+              description and CV text being sent to Anthropic (via a Supabase proxy) as necessary
+              for the app to generate tailored documents. Unchecking this box will permanently
+              delete all data this app has stored in this browser.
             </span>
           </label>
         </div>
@@ -161,7 +167,9 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
               disabled={!consent}
               className="text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label className={`flex items-center gap-2 text-xs text-slate-500 mt-1 ${!consent ? 'opacity-50' : ''}`}>
+            <label
+              className={`flex items-center gap-2 text-xs text-slate-500 mt-1 ${!consent ? 'opacity-50' : ''}`}
+            >
               <input
                 type="checkbox"
                 checked={saveThisCV}
@@ -172,7 +180,9 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
             </label>
             {parsing && <p className="text-xs text-slate-500 mt-1">Reading file…</p>}
             {cvFile && cvFileText && !parsing && (
-              <p className="text-xs text-emerald-600 mt-1">Loaded {cvFile.name} ({cvFileText.length.toLocaleString()} chars).</p>
+              <p className="text-xs text-emerald-600 mt-1">
+                Loaded {cvFile.name} ({cvFileText.length.toLocaleString()} chars).
+              </p>
             )}
             {parseError && <p className="text-xs text-red-600 mt-1">{parseError}</p>}
           </>

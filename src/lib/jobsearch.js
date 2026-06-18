@@ -13,7 +13,9 @@ async function callJobsearch(payload) {
   const fnUrl = jobsearchFunctionUrl();
   if (!fnUrl) throw new Error('Supabase URL not configured.');
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
   if (!session) throw new Error('Not signed in.');
 
   const res = await fetch(fnUrl, {
@@ -85,12 +87,7 @@ export async function refreshCandidates({ currentJDText } = {}) {
  * @param {string} [args.freeText]
  * @returns {Promise<{ candidates: Array<object>, newly_added: number }>}
  */
-export async function submitJobsearchFeedback({
-  candidateId,
-  action,
-  reasonCode,
-  freeText
-}) {
+export async function submitJobsearchFeedback({ candidateId, action, reasonCode, freeText }) {
   if (!candidateId) throw new Error('candidateId required');
   if (action !== 'pass' && action !== 'apply') {
     throw new Error("action must be 'pass' or 'apply'");

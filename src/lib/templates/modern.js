@@ -1,6 +1,12 @@
 import {
-  Paragraph, TextRun, AlignmentType, BorderStyle, LevelFormat,
-  SectionType, ColumnBreak, Column
+  Paragraph,
+  TextRun,
+  AlignmentType,
+  BorderStyle,
+  LevelFormat,
+  SectionType,
+  ColumnBreak,
+  Column
 } from 'docx';
 import { MODERN as T } from './tokens.js';
 
@@ -19,10 +25,10 @@ const MAIN_WIDTH = CONTENT_WIDTH - COL_SPACE - SIDEBAR_WIDTH;
 
 const SPLIT_AFTER_ROLE = 3;
 
-function runText(text, {
-  size = pt(T.sizes.body), bold = false, italics = false,
-  color, font = BODY_FONT
-} = {}) {
+function runText(
+  text,
+  { size = pt(T.sizes.body), bold = false, italics = false, color, font = BODY_FONT } = {}
+) {
   const opts = { text, font, size, bold, italics };
   if (color) opts.color = color;
   return new TextRun(opts);
@@ -30,9 +36,13 @@ function runText(text, {
 
 function sectionHeader(label, { firstInColumn = false } = {}) {
   return new Paragraph({
-    children: [runText(label, {
-      size: pt(T.sizes.sectionHeader), bold: true, color: T.color.header
-    })],
+    children: [
+      runText(label, {
+        size: pt(T.sizes.sectionHeader),
+        bold: true,
+        color: T.color.header
+      })
+    ],
     spacing: { before: firstInColumn ? 0 : sp(8), after: sp(4) },
     border: {
       bottom: { style: BorderStyle.SINGLE, size: 8, color: T.color.accent, space: 2 }
@@ -49,16 +59,24 @@ function columnBreak() {
 
 function nameBlock(data) {
   const paras = [];
-  paras.push(new Paragraph({
-    children: [runText(data.name || '', {
-      size: pt(T.sizes.name), bold: true, color: T.color.name
-    })],
-    spacing: { after: sp(2) }
-  }));
-  paras.push(new Paragraph({
-    children: [runText(data.contact || '', { size: pt(T.sizes.contact) })],
-    spacing: { after: sp(4) }
-  }));
+  paras.push(
+    new Paragraph({
+      children: [
+        runText(data.name || '', {
+          size: pt(T.sizes.name),
+          bold: true,
+          color: T.color.name
+        })
+      ],
+      spacing: { after: sp(2) }
+    })
+  );
+  paras.push(
+    new Paragraph({
+      children: [runText(data.contact || '', { size: pt(T.sizes.contact) })],
+      spacing: { after: sp(4) }
+    })
+  );
   return paras;
 }
 
@@ -87,10 +105,12 @@ function sidebarSummaryAndSkills(data) {
   if (data.summary) {
     out.push(sectionHeader('Summary', { firstInColumn: first }));
     first = false;
-    out.push(new Paragraph({
-      children: [runText(data.summary, { size: pt(T.sizes.body) })],
-      spacing: { after: sp(6) }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(data.summary, { size: pt(T.sizes.body) })],
+        spacing: { after: sp(6) }
+      })
+    );
   }
   if (data.skills?.length) {
     out.push(sectionHeader('Skills', { firstInColumn: first }));
@@ -117,19 +137,22 @@ function sidebarEducation(data, { firstInColumn = true } = {}) {
   if (data.education?.length) {
     out.push(sectionHeader('Education', { firstInColumn }));
     for (const e of data.education) {
-      out.push(new Paragraph({
-        children: [runText(e, { size: pt(T.sizes.body) })],
-        spacing: { after: sp(4) }
-      }));
+      out.push(
+        new Paragraph({
+          children: [runText(e, { size: pt(T.sizes.body) })],
+          spacing: { after: sp(4) }
+        })
+      );
     }
   }
   return out;
 }
 
 function roleSubline(role) {
-  const dates = role.startDate && role.endDate
-    ? `${role.startDate} – ${role.endDate}`
-    : (role.startDate || role.endDate || '');
+  const dates =
+    role.startDate && role.endDate
+      ? `${role.startDate} – ${role.endDate}`
+      : role.startDate || role.endDate || '';
   const parts = [role.title || '', role.location || '', dates].filter(Boolean);
   if (parts.length) return parts.join(' · ');
   return role.titleLine || '';
@@ -137,25 +160,38 @@ function roleSubline(role) {
 
 function experienceRole(role) {
   const out = [];
-  out.push(new Paragraph({
-    children: [runText(role.company || '', {
-      size: pt(T.sizes.body), bold: true, color: T.color.accent
-    })],
-    spacing: { before: sp(6), after: 0 }
-  }));
-  out.push(new Paragraph({
-    children: [runText(roleSubline(role), {
-      size: pt(T.sizes.body), italics: true
-    })],
-    spacing: { after: sp(3) }
-  }));
+  out.push(
+    new Paragraph({
+      children: [
+        runText(role.company || '', {
+          size: pt(T.sizes.body),
+          bold: true,
+          color: T.color.accent
+        })
+      ],
+      spacing: { before: sp(6), after: 0 }
+    })
+  );
+  out.push(
+    new Paragraph({
+      children: [
+        runText(roleSubline(role), {
+          size: pt(T.sizes.body),
+          italics: true
+        })
+      ],
+      spacing: { after: sp(3) }
+    })
+  );
   for (const b of role.bullets || []) {
-    out.push(new Paragraph({
-      children: [runText(b, { size: pt(T.sizes.bullet) })],
-      spacing: { after: sp(2) },
-      alignment: AlignmentType.LEFT,
-      numbering: { reference: 'cv-bullets', level: 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(b, { size: pt(T.sizes.bullet) })],
+        spacing: { after: sp(2) },
+        alignment: AlignmentType.LEFT,
+        numbering: { reference: 'cv-bullets', level: 0 }
+      })
+    );
   }
   return out;
 }
@@ -163,12 +199,14 @@ function experienceRole(role) {
 function sidebarList(label, items, { firstInColumn = false } = {}) {
   const out = [sectionHeader(label, { firstInColumn })];
   for (const item of items) {
-    out.push(new Paragraph({
-      children: [runText(item, { size: pt(T.sizes.body) })],
-      spacing: { after: sp(3) },
-      alignment: AlignmentType.LEFT,
-      numbering: { reference: 'cv-bullets', level: 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(item, { size: pt(T.sizes.body) })],
+        spacing: { after: sp(3) },
+        alignment: AlignmentType.LEFT,
+        numbering: { reference: 'cv-bullets', level: 0 }
+      })
+    );
   }
   return out;
 }
@@ -176,17 +214,25 @@ function sidebarList(label, items, { firstInColumn = false } = {}) {
 function startupAchievements(items) {
   const out = [sectionHeader('Startup Achievements', { firstInColumn: false })];
   items.forEach((a) => {
-    out.push(new Paragraph({
-      children: [runText(a.title || '', {
-        size: pt(T.sizes.body), bold: true, color: T.color.accent
-      })],
-      spacing: { before: sp(4), after: 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [
+          runText(a.title || '', {
+            size: pt(T.sizes.body),
+            bold: true,
+            color: T.color.accent
+          })
+        ],
+        spacing: { before: sp(4), after: 0 }
+      })
+    );
     if (a.body) {
-      out.push(new Paragraph({
-        children: [runText(a.body, { size: pt(T.sizes.body) })],
-        spacing: { after: sp(3) }
-      }));
+      out.push(
+        new Paragraph({
+          children: [runText(a.body, { size: pt(T.sizes.body) })],
+          spacing: { after: sp(3) }
+        })
+      );
     }
   });
   return out;
@@ -311,82 +357,110 @@ export function renderCV(data) {
 export function renderCL(data) {
   const out = [];
 
-  out.push(new Paragraph({
-    children: [runText(data.senderName || '', {
-      size: pt(14), bold: true, color: T.color.name
-    })],
-    spacing: { after: sp(2) }
-  }));
-  out.push(new Paragraph({
-    children: [runText(data.senderContact || '', { size: pt(T.sizes.contact) })],
-    spacing: { after: sp(8) },
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 4, color: T.color.accent, space: 6 }
-    }
-  }));
+  out.push(
+    new Paragraph({
+      children: [
+        runText(data.senderName || '', {
+          size: pt(14),
+          bold: true,
+          color: T.color.name
+        })
+      ],
+      spacing: { after: sp(2) }
+    })
+  );
+  out.push(
+    new Paragraph({
+      children: [runText(data.senderContact || '', { size: pt(T.sizes.contact) })],
+      spacing: { after: sp(8) },
+      border: {
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: T.color.accent, space: 6 }
+      }
+    })
+  );
   out.push(new Paragraph({ children: [runText('')], spacing: { after: sp(12) } }));
 
-  out.push(new Paragraph({
-    children: [runText(data.date || '', { size: pt(11) })],
-    spacing: { after: sp(18) }
-  }));
+  out.push(
+    new Paragraph({
+      children: [runText(data.date || '', { size: pt(11) })],
+      spacing: { after: sp(18) }
+    })
+  );
 
   const r = data.recipient || {};
   const recipientLines = [r.name, r.title, r.company, r.location].filter(Boolean);
   recipientLines.forEach((line, i) => {
-    out.push(new Paragraph({
-      children: [runText(line, { size: pt(11) })],
-      spacing: { after: i === recipientLines.length - 1 ? sp(18) : 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(line, { size: pt(11) })],
+        spacing: { after: i === recipientLines.length - 1 ? sp(18) : 0 }
+      })
+    );
   });
   if (!recipientLines.length) {
     out.push(new Paragraph({ children: [runText('')], spacing: { after: sp(18) } }));
   }
 
-  out.push(new Paragraph({
-    children: [runText(data.salutation || 'Dear Hiring Team,', { size: pt(11) })],
-    spacing: { after: sp(10) }
-  }));
+  out.push(
+    new Paragraph({
+      children: [runText(data.salutation || 'Dear Hiring Team,', { size: pt(11) })],
+      spacing: { after: sp(10) }
+    })
+  );
 
   const openingLines = (data.openingParagraph || '').split('\n');
   openingLines.forEach((line, i) => {
-    out.push(new Paragraph({
-      children: [runText(line, { size: pt(11) })],
-      spacing: { after: i === openingLines.length - 1 ? sp(10) : 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(line, { size: pt(11) })],
+        spacing: { after: i === openingLines.length - 1 ? sp(10) : 0 }
+      })
+    );
   });
 
   for (const b of data.bullets || []) {
-    out.push(new Paragraph({
-      children: [runText(b, { size: pt(11) })],
-      spacing: { after: sp(6) },
-      alignment: AlignmentType.LEFT,
-      numbering: { reference: 'cl-bullets', level: 0 }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(b, { size: pt(11) })],
+        spacing: { after: sp(6) },
+        alignment: AlignmentType.LEFT,
+        numbering: { reference: 'cl-bullets', level: 0 }
+      })
+    );
   }
 
   const closingLines = (data.closingParagraph || '').split('\n');
   closingLines.forEach((line, i) => {
-    out.push(new Paragraph({
-      children: [runText(line, { size: pt(11) })],
-      spacing: {
-        before: i === 0 ? sp(10) : 0,
-        after: i === closingLines.length - 1 ? sp(10) : sp(6)
-      }
-    }));
+    out.push(
+      new Paragraph({
+        children: [runText(line, { size: pt(11) })],
+        spacing: {
+          before: i === 0 ? sp(10) : 0,
+          after: i === closingLines.length - 1 ? sp(10) : sp(6)
+        }
+      })
+    );
   });
 
-  out.push(new Paragraph({
-    children: [runText('Best regards,', { size: pt(11) })],
-    spacing: { after: sp(18) }
-  }));
+  out.push(
+    new Paragraph({
+      children: [runText('Best regards,', { size: pt(11) })],
+      spacing: { after: sp(18) }
+    })
+  );
 
-  out.push(new Paragraph({
-    children: [runText(data.signatureName || data.senderName || '', {
-      size: pt(11), bold: true, color: T.color.name
-    })],
-    spacing: { after: 0 }
-  }));
+  out.push(
+    new Paragraph({
+      children: [
+        runText(data.signatureName || data.senderName || '', {
+          size: pt(11),
+          bold: true,
+          color: T.color.name
+        })
+      ],
+      spacing: { after: 0 }
+    })
+  );
 
   return {
     styles: buildStyles(),

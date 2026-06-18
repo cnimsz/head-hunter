@@ -1,4 +1,9 @@
-export function buildJobResearchPrompt({ jobDescription, companyName, cvHighlights, learnings = '' }) {
+export function buildJobResearchPrompt({
+  jobDescription,
+  companyName,
+  cvHighlights,
+  learnings = ''
+}) {
   return `${learnings}
 You research companies and identify hiring managers for job applications.
 
