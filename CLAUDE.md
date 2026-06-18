@@ -1,7 +1,7 @@
 # CV Toolkit App (Head Hunter)
 
 One-screen web app: Paste job description → Get tailored CV, cover letter, and LinkedIn message.
-All processing runs client-side in the browser — no backend.
+File parsing runs client-side in the browser; Claude calls and the auth-gated features (Gap Analysis, Find Roles) are proxied through Supabase Edge Functions so the Anthropic API key never reaches the client.
 
 ## Tech Stack
 
@@ -9,10 +9,11 @@ All processing runs client-side in the browser — no backend.
 - **Styling:** Tailwind CSS 3 (dark mode via class toggle)
 - **Document generation:** `docx` + `file-saver`
 - **File parsing:** `pdfjs-dist` (PDF), `mammoth` (DOCX), `jszip` (ZIP)
-- **API:** Anthropic Messages API — claude-sonnet-4-6, proxied via Supabase Edge Function (`head-hunter-claude`)
-- **Bot challenge:** Cloudflare Turnstile gates the edge function. Site key is public (in the bundle); secret key + HMAC session secret live as Supabase secrets.
-- **Supabase:** Project ref `bcenuebydpkyfmtzfcku` — edge function uses `ANTHROPIC_API_KEY` (Anthropic API key), `TURNSTILE_SECRET_KEY`, and `HEAD_HUNTER_SESSION_SECRET` secrets
-- **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, and `learnings:*`
+- **API:** Anthropic Messages API — Sonnet 4.6 for CV writing + cover letter, Haiku 4.5 for the research call (separate rate-limit pool — web_search inflates input tokens enough to blow Sonnet's Tier 1 ITPM). Proxied via Supabase Edge Function `head-hunter-claude`.
+- **Bot challenge:** Cloudflare Turnstile gates the public edge function. Site key is public (in the bundle); secret key + HMAC session secret live as Supabase secrets.
+- **Auth:** Supabase Auth (magic link) gates the Gap Analysis and Find Roles features. Public surfaces (generation pipeline) stay unauthenticated and only need Turnstile.
+- **Supabase:** Project ref `bcenuebydpkyfmtzfcku` — edge functions use `ANTHROPIC_API_KEY`, `TURNSTILE_SECRET_KEY`, `HEAD_HUNTER_SESSION_SECRET`, and (for jobsearch) `RAPIDAPI_KEY` secrets.
+- **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, `consent`, `template`, `auth`, and `learnings:*`.
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
 ## Architecture
@@ -22,25 +23,28 @@ All processing runs client-side in the browser — no backend.
 │                        APP SHELL                                │
 │  App.jsx — layout, theme, state orchestration                   │
 └─────────────────────────────────────────────────────────────────┘
-         │              │              │              │
-         ▼              ▼              ▼              ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│   INPUT     │ │   CLAUDE    │ │   OUTPUT    │ │   STORAGE   │
-│   PANEL     │ │   ENGINE    │ │   PANEL     │ │   LAYER     │
-│             │ │ claude.js   │ │ + Editable  │ │ storage.js  │
-│             │ │ + prompts/  │ │ + Feedback  │ │ learnings.js│
-└─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘
-       │                                │              │
-┌──────┴──────┐                  ┌──────┴──────┐ ┌────┴────────┐
-│  CV Parser  │                  │  DOCX Gen   │ │ Master CV   │
-│ cvParser.js │                  │  docx.js    │ │ Compiler    │
-└─────────────┘                  └─────────────┘ └─────────────┘
+   │           │           │           │             │           │
+   ▼           ▼           ▼           ▼             ▼           ▼
+┌──────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐
+│INPUT │ │  CLAUDE  │ │ OUTPUT  │ │   GAP    │ │   JOB    │ │ STORAGE │
+│PANEL │ │  ENGINE  │ │  PANEL  │ │ ANALYSIS │ │  SEARCH  │ │  LAYER  │
+│      │ │claude.js │ │+Editable│ │  PANEL   │ │  PANEL   │ │storage  │
+│      │ │+prompts/ │ │+Feedback│ │(AuthGate)│ │(AuthGate)│ │+profile │
+│      │ │          │ │+Templates│ │          │ │          │ │+learn.  │
+└──────┘ └──────────┘ └─────────┘ └──────────┘ └──────────┘ └─────────┘
+    │         │           │            │             │
+┌───┴───┐ ┌───┴────┐ ┌───┴────┐  ┌────┴─────┐  ┌────┴──────┐
+│Parser │ │Turnst. │ │DOCX Gen│  │ gap-     │  │ jobsearch │
+│cvPars.│ │+Master │ │+ tpl/* │  │ analysis │  │ edge fn   │
+│       │ │CV Comp.│ │        │  │ edge fn  │  │ (JSearch) │
+└───────┘ └────────┘ └────────┘  └──────────┘  └───────────┘
 ```
 
 ## File Structure
 
 ```
 head-hunter/
+├── README.md
 ├── CLAUDE.md
 ├── index.html
 ├── package.json
@@ -52,47 +56,70 @@ head-hunter/
 │   ├── App.jsx                         ← Shell, theme, state orchestration
 │   ├── index.css                       ← Tailwind directives
 │   ├── components/
-│   │   ├── InputPanel.jsx              ← Job description + CV upload form
-│   │   ├── OutputPanel.jsx             ← Tabbed results (CV/CL/LinkedIn) + display components
+│   │   ├── InputPanel.jsx              ← JD + CV upload form, consent gate, Turnstile
+│   │   ├── OutputPanel.jsx             ← Tabbed results (CV/CL/Research) + display
 │   │   ├── EditableCV.jsx              ← Structured CV editing form
 │   │   ├── EditableCoverLetter.jsx     ← Structured cover letter editing form
 │   │   ├── FeedbackModal.jsx           ← Upload revised docs → extract style rules
 │   │   ├── MasterCVCompiler.jsx        ← Upload .zip of CVs → synthesize master CV
-│   │   ├── SettingsModal.jsx           ← Saved CV management
-│   │   └── Turnstile.jsx               ← Cloudflare Turnstile widget wrapper
+│   │   ├── SettingsModal.jsx           ← Identity, saved CV, and learnings management
+│   │   ├── Turnstile.jsx               ← Cloudflare Turnstile widget wrapper
+│   │   ├── AuthGate.jsx                ← Magic-link sign-in wrapper (gates GapAnalysis/JobSearch)
+│   │   ├── GapAnalysisPanel.jsx        ← Auth-gated CV vs JD gap analysis + apply-to-master
+│   │   └── JobSearchPanel.jsx          ← Auth-gated "Find Roles" pool (3 active candidates)
 │   ├── lib/
 │   │   ├── claude.js                   ← API calls, generation pipeline, JSON extraction
 │   │   ├── cvParser.js                 ← PDF/DOCX/TXT text extraction (client-side)
-│   │   ├── docx.js                     ← Structured data → formatted .docx download
-│   │   ├── storage.js                  ← localStorage wrapper (CV, theme)
+│   │   ├── docx.js                     ← Dispatcher: pick template + render + saveAs
+│   │   ├── storage.js                  ← localStorage wrapper (CV, theme, consent)
+│   │   ├── profile.js                  ← Identity extraction + merge from uploaded CVs
 │   │   ├── learnings.js                ← Learned style rules persistence
 │   │   ├── feedback.js                 ← Diff analysis via Claude
-│   │   └── compileMasterCV.js          ← ZIP extraction + master CV synthesis
+│   │   ├── compileMasterCV.js          ← ZIP extraction + master CV synthesis
+│   │   ├── supabase.js                 ← Supabase client singleton + function URL helpers
+│   │   ├── gapAnalysis.js              ← Gap-analysis edge fn client + master-CV splicer
+│   │   ├── jobsearch.js                ← Jobsearch edge fn client (list/refresh/feedback)
+│   │   └── templates/                  ← .docx visual templates
+│   │       ├── tokens.js               ← Per-template style tokens (fonts, sizes, colors)
+│   │       ├── classic.js              ← Classic CV/CL renderer (Arial, single column)
+│   │       ├── modern.js               ← Modern CV/CL renderer (Calibri, two-column)
+│   │       └── executive.js            ← Executive CV/CL renderer (Georgia, accent rule)
 │   └── prompts/
 │       ├── cv-writer.js                ← CV tailoring prompt (→ structured JSON)
 │       ├── job-research.js             ← Company research + hiring manager + LinkedIn msg
 │       ├── cover-letter.js             ← Cover letter prompt (→ structured JSON)
 │       ├── master-cv.js                ← Multi-CV synthesis prompt
-│       └── feedback.js                 ← Diff analysis → style rules prompt
+│       ├── feedback.js                 ← Diff analysis → style rules prompt
+│       └── gap-analysis.js             ← Gap-analysis prompt (→ structured findings)
+├── supabase/
+│   ├── config.toml
+│   ├── functions/
+│   │   ├── head-hunter-claude/         ← Public generation proxy (Turnstile + session)
+│   │   ├── gap-analysis/               ← Auth-gated; persists runs + findings (RLS)
+│   │   └── jobsearch/                  ← Auth-gated; JSearch + candidate pool + signals
+│   └── migrations/                     ← SQL for gap_analysis_* and jobsearch_* tables
 ├── skills/                             ← Reference skill docs (not used at runtime)
 │   ├── CV_FORMAT_SPEC.md
 │   ├── COVER_LETTER_FORMAT_SPEC.md
 │   ├── cv-writer/SKILL.md
 │   ├── cover-letter-writer/SKILL.md
-│   └── job-description-research/SKILL.md
+│   ├── job-description-research/SKILL.md
+│   ├── cv-gap-analysis/
+│   └── jobsearch/
+├── specs/                              ← Design specs for gap-analysis + jobsearch
 └── public/
     └── favicon.svg
 ```
 
 ## Generation Pipeline
 
-Three sequential Claude API calls per generation:
+Three sequential Claude API calls per generation, two models:
 
-1. **CV Writer** — `jobDescription` + `masterCV` → structured `cvData` JSON
-2. **Job Research** — `jobDescription` + `companyName` + CV highlights → `hiringManager`, `companyBrief`, `linkedInMessage`
-3. **Cover Letter** — `jobDescription` + `tailoredCV` + `hiringManager` + `companyBrief` → structured `clData` JSON
+1. **CV Writer** (`MODEL` = Sonnet 4.6) — `jobDescription` + `masterCV` → structured `cvData` JSON
+2. **Job Research** (`RESEARCH_MODEL` = Haiku 4.5) — `jobDescription` + `companyName` + CV highlights → `hiringManager`, `companyBrief`, `linkedInMessage`. Runs Anthropic's hosted `web_search_20250305` tool with `max_uses: 5`. Haiku is used here because web_search inflates input tokens enough to blow Sonnet's Tier 1 ITPM if all three calls run on the same model.
+3. **Cover Letter** (`MODEL` = Sonnet 4.6) — `jobDescription` + `tailoredCV` + `hiringManager` + `companyBrief` → structured `clData` JSON
 
-Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLetter'` → `'done'`
+Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLetter'` → `'done'`.
 
 ## Structured Data Formats
 
@@ -139,9 +166,9 @@ Progress tracked via `onStep` callback: `'cv'` → `'research'` → `'coverLette
 }
 ```
 
-**Web search:** the research call (and only that call) passes a `tools` array containing Anthropic's hosted `web_search_20250305` server tool with `max_uses: 8`. The edge function allow-lists which tool types it forwards (see `ALLOWED_TOOL_TYPES` in `supabase/functions/head-hunter-claude/index.ts`). The OutputPanel validates `linkedInUrl` against the canonical `linkedin.com/(in|pub)/<slug>` pattern before rendering the link.
+**Web search:** the research call (and only that call) passes a `tools` array containing Anthropic's hosted `web_search_20250305` server tool with `max_uses: 5`. The edge function allow-lists which tool types it forwards (see `ALLOWED_TOOL_TYPES` in `supabase/functions/head-hunter-claude/index.ts`). The OutputPanel validates `linkedInUrl` against the canonical `linkedin.com/(in|pub)/<slug>` pattern before rendering the link.
 
-Cost: ~$0.30–$0.40 per research call at Sonnet 4.6 pricing. Each search costs $0.01, but the larger driver is input-token inflation — every search result is appended to the message context, pushing a single research call from ~3K input tokens to ~80K+. Latency ~30–45s when the model uses several searches. If cost or latency becomes an issue, lower `max_uses` in `src/lib/claude.js` (currently 8) or switch the research call only to Haiku 4.5 (would require a second `MODEL` constant and extending the edge function model allow-list usage).
+Cost: ~$0.05–$0.10 per research call at Haiku 4.5 pricing (was $0.30+ on Sonnet). Each search costs $0.01, but the larger driver is input-token inflation — every search result is appended to the message context, pushing a single research call from ~3K input tokens to ~80K+. Latency ~25–40s when the model uses several searches. Tune via the `max_uses` literal in `src/lib/claude.js` or the `RESEARCH_MODEL` constant.
 
 ## Key Patterns
 
@@ -152,6 +179,10 @@ Cost: ~$0.30–$0.40 per research call at Sonnet 4.6 pricing. Each search costs 
 **Learned preferences:** Users upload revised versions of generated docs via FeedbackModal. Claude diffs original vs revised and extracts durable style rules. Rules are stored in localStorage (`cv-toolkit:learnings:{skill}`, max 40 per skill) and appended to future prompts via `formatLearningsBlock()`.
 
 **Master CV compiler:** Upload a .zip of multiple CV files → extract text from each → send to Claude to synthesize one comprehensive master CV → save for future tailoring.
+
+**Auth-gated features (Gap Analysis + Find Roles):** Opened from the main app via `AuthGate`, a magic-link sign-in wrapper backed by Supabase Auth. Public surfaces stay unauthenticated — only these two features require a user session, because both persist per-user state (gap findings; jobsearch candidates + feedback signals) under RLS in Postgres. Each panel has its own dedicated edge function (`gap-analysis`, `jobsearch`) with its own rate limit and its own model budget.
+
+**Visual templates:** DOCX generation goes through `src/lib/docx.js`, which dispatches to one of three template modules under `src/lib/templates/` (Classic/Modern/Executive). Each module exports `renderCV(data)` and `renderCL(data)` returning `{ styles, numbering, sections }`. Tokens (fonts, sizes, colors, margins) live in `tokens.js`. User's template choice persists in localStorage at `cv-toolkit:template`.
 
 ## DOCX Formatting
 
@@ -270,5 +301,6 @@ Always run `/test-pipeline` after:
 - [ ] Multiple CV profiles
 - [ ] Direct LinkedIn integration
 - [ ] PDF export option
-- [ ] Add structured outputs to replace `extractJson()`
-- [ ] Add prompt caching for multi-call sessions
+- [ ] Add structured outputs to replace `extractJson()` (currently duplicated across `src/lib/claude.js`, `src/lib/feedback.js`, and `supabase/functions/gap-analysis/index.ts`)
+- [ ] Extract a `supabase/functions/_shared/` module — CORS, rate limit, and JSON extraction are copy-pasted across the three edge functions
+- [ ] Add ESLint + Prettier to catch dep-array drift and missing `type="button"` automatically
