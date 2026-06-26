@@ -10,6 +10,8 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [editedText, setEditedText] = useState('');
+  const [savedText, setSavedText] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
 
   async function handleCompile() {
@@ -39,6 +41,8 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
       for (const cv of cvs) updateProfileFromText(cv.text);
       updateProfileFromText(masterText);
       setResult({ text: masterText, count: cvs.length, filename });
+      setEditedText(masterText);
+      setSavedText(masterText);
       setStatus('done');
       onCompiled?.();
     } catch (e) {
@@ -138,28 +142,42 @@ export default function MasterCVCompiler({ onClose, onCompiled }) {
         {status === 'done' && result && (
           <>
             <p className="text-sm text-emerald-600 mb-3">
-              Master CV compiled from {result.count} source CV(s) and saved. It is now selected as
-              your saved CV.
+              Master CV compiled from {result.count} source CV(s) and saved. Edit below to fix any
+              mistakes, then click Save to update your saved CV.
             </p>
             <textarea
-              readOnly
-              value={result.text}
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
               className="w-full h-80 px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
             />
-            <div className="flex gap-2 mt-3">
+            <div className="flex items-center gap-2 mt-3">
               <button
-                onClick={() => navigator.clipboard.writeText(result.text)}
+                onClick={() => {
+                  saveMasterCV(editedText, result.filename);
+                  updateProfileFromText(editedText);
+                  setSavedText(editedText);
+                }}
+                disabled={editedText === savedText}
+                className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => navigator.clipboard.writeText(editedText)}
                 className="px-4 py-2 rounded border border-slate-300 dark:border-slate-700 text-sm"
               >
                 Copy
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm font-medium"
+                className="px-4 py-2 rounded border border-slate-300 dark:border-slate-700 text-sm ml-auto"
               >
                 Done
               </button>
             </div>
+            {editedText !== savedText && (
+              <p className="text-xs text-amber-600 mt-2">Unsaved changes.</p>
+            )}
           </>
         )}
       </div>
