@@ -33,20 +33,26 @@ function suffix({ companyAndRole } = {}) {
   return companyAndRole ? `_${safeFilename(companyAndRole)}` : '';
 }
 
-export async function generateCVDocx(data, candidateName = 'CV', meta = {}) {
+export async function buildCVBlob(data, meta = {}) {
   const tpl = pickTemplate(meta.template);
-  const result = tpl.renderCV(data);
-  const doc = buildDocFrom(result);
-  const blob = await Packer.toBlob(doc);
+  const doc = buildDocFrom(tpl.renderCV(data));
+  return Packer.toBlob(doc);
+}
+
+export async function buildCoverLetterBlob(data, meta = {}) {
+  const tpl = pickTemplate(meta.template);
+  const doc = buildDocFrom(tpl.renderCL(data));
+  return Packer.toBlob(doc);
+}
+
+export async function generateCVDocx(data, candidateName = 'CV', meta = {}) {
+  const blob = await buildCVBlob(data, meta);
   saveAs(blob, `${safeFilename(candidateName)}_CV${suffix(meta)}.docx`);
   return blob;
 }
 
 export async function generateCoverLetterDocx(data, candidateName = 'Candidate', meta = {}) {
-  const tpl = pickTemplate(meta.template);
-  const result = tpl.renderCL(data);
-  const doc = buildDocFrom(result);
-  const blob = await Packer.toBlob(doc);
+  const blob = await buildCoverLetterBlob(data, meta);
   saveAs(blob, `${safeFilename(candidateName)}_CL${suffix(meta)}.docx`);
   return blob;
 }

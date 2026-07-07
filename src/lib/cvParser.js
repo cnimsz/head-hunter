@@ -10,7 +10,14 @@ export async function extractTextFromFile(file) {
 }
 
 async function extractDocx(file) {
-  const arrayBuffer = await file.arrayBuffer();
+  return extractDocxText(file);
+}
+
+// Extract raw text from a .docx Blob or File. Used both for user uploads and
+// for re-extracting our own generated .docx so the feedback baseline goes
+// through the exact same render→extract pipeline as the revised upload.
+export async function extractDocxText(blobOrFile) {
+  const arrayBuffer = await blobOrFile.arrayBuffer();
   const { value } = await mammoth.extractRawText({ arrayBuffer });
   return value.trim();
 }

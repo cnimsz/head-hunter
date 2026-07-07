@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { extractTextFromFile } from '../lib/cvParser.js';
+import { extractTextFromFile, extractDocxText } from '../lib/cvParser.js';
+import { buildCVBlob, buildCoverLetterBlob } from '../lib/docx.js';
 import { analyseRevisions } from '../lib/feedback.js';
 import { appendLearnings, getLearnings } from '../lib/learnings.js';
 import { updateProfileFromText } from '../lib/profile.js';
@@ -27,7 +28,28 @@ function parseRules(text) {
     .filter(Boolean);
 }
 
-export default function FeedbackModal({ result, onClose }) {
+// Build the comparison baseline the same way the user got it: render the CV /
+// cover letter to a .docx with the same template they downloaded, then extract
+// its raw text with the same parser used for their upload. This makes the diff
+// apples-to-apples — Word list bullets, title/date layout, and separators cancel
+// out, so only genuine edits register instead of docx round-trip artifacts.
+async function downloadedBaseline(skill, result, template) {
+  try {
+    if (skill === 'cv' && result?.cvData) {
+      return await extractDocxText(await buildCVBlob(result.cvData, { template }));
+    }
+    if (skill === 'coverLetter' && result?.clData) {
+      return await extractDocxText(await buildCoverLetterBlob(result.clData, { template }));
+    }
+  } catch {
+    // Fall back to the plain-text version if rendering/extraction fails.
+  }
+  return { cv: result?.cv, coverLetter: result?.coverLetter, linkedIn: result?.linkedInMessage }[
+    skill
+  ];
+}
+
+export default function FeedbackModal({ result, template = 'classic', onClose }) {
   const [revised, setRevised] = useState({ cv: '', coverLetter: '', linkedIn: '' });
   const [status, setStatus] = useState('input');
   const [analysis, setAnalysis] = useState(null);
@@ -72,10 +94,14 @@ export default function FeedbackModal({ result, onClose }) {
     resetTurnstile();
     setStatus('analysing');
     try {
+      const [cvBaseline, clBaseline] = await Promise.all([
+        downloadedBaseline('cv', result, template),
+        downloadedBaseline('coverLetter', result, template)
+      ]);
       const out = await analyseRevisions({
         originals: {
-          cv: result.cv,
-          coverLetter: result.coverLetter,
+          cv: cvBaseline,
+          coverLetter: clBaseline,
           linkedIn: result.linkedInMessage
         },
         revised,

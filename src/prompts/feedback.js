@@ -7,7 +7,7 @@ export function buildFeedbackPrompt({ originals, revised }) {
   return `You are analysing edits a user made to AI-generated job-application documents, so that future generations learn the user's preferences. You are a precise editor — do not invent preferences that are not evidenced by the edits.
 
 For each of the three documents below, compare ORIGINAL vs REVISED and:
-1. Write a short human-readable summary of what meaningfully changed (tone, structure, vocabulary, formatting, content added/removed, length). Ignore trivial whitespace or reordering that carries no signal.
+1. Write a short human-readable summary of what meaningfully changed (tone, structure, vocabulary, formatting, content added/removed, length). Ignore trivial whitespace or reordering that carries no signal. Both versions were extracted from documents with the same tool, so do NOT report artifacts of file conversion as edits — e.g. bullet glyphs (•) becoming plain lines, tab/column alignment of dates, or line-wrapping differences are NOT user changes unless the actual words differ.
 2. Extract a small set of **durable style/content rules** a future writer should follow to produce output closer to the REVISED version from the start. Rules must be:
    - General enough to apply to future documents for different jobs (not specific to this role)
    - Concrete and directive (e.g., "Use active voice exclusively", "Never open cover letters with 'I am writing to...'", "Keep bullets under 20 words")

@@ -249,7 +249,11 @@ export default function OutputPanel({ result, error, companyName, jobDescription
       )}
 
       {feedbackOpen && result && (
-        <FeedbackModal result={result} onClose={() => setFeedbackOpen(false)} />
+        <FeedbackModal
+          result={result}
+          template={template}
+          onClose={() => setFeedbackOpen(false)}
+        />
       )}
 
       {gapAnalysisOpen && result?.cv && (
