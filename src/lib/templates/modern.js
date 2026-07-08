@@ -4,80 +4,126 @@ import {
   AlignmentType,
   BorderStyle,
   LevelFormat,
-  SectionType,
-  ColumnBreak,
-  Column
+  ShadingType,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  VerticalAlign
 } from 'docx';
 import { MODERN as T } from './tokens.js';
 
 const BODY_FONT = T.fonts.body;
 const pt = (p) => p * 2;
 const sp = (p) => p * 20;
-const INDENT = 360;
+const INDENT = 300;
 
 const PAGE_WIDTH = 12240;
 const PAGE_HEIGHT = 15840;
 const MARGIN = T.page.marginTwips;
 const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
-const COL_SPACE = T.columns.spaceTwips;
-const SIDEBAR_WIDTH = Math.round((CONTENT_WIDTH - COL_SPACE) * T.columns.sidebarFraction);
-const MAIN_WIDTH = CONTENT_WIDTH - COL_SPACE - SIDEBAR_WIDTH;
+const SIDEBAR_WIDTH = Math.round(CONTENT_WIDTH * T.columns.sidebarFraction);
+const MAIN_WIDTH = CONTENT_WIDTH - SIDEBAR_WIDTH;
+const CELL_PAD = 170;
 
-const SPLIT_AFTER_ROLE = 3;
+const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+const CELL_BORDERS = { top: NO_BORDER, bottom: NO_BORDER, left: NO_BORDER, right: NO_BORDER };
 
 function runText(
   text,
-  { size = pt(T.sizes.body), bold = false, italics = false, color, font = BODY_FONT } = {}
+  {
+    size = pt(T.sizes.body),
+    bold = false,
+    italics = false,
+    color,
+    font = BODY_FONT,
+    characterSpacing
+  } = {}
 ) {
   const opts = { text, font, size, bold, italics };
   if (color) opts.color = color;
+  if (characterSpacing) opts.characterSpacing = characterSpacing;
   return new TextRun(opts);
 }
+
+function bodyPara(text, { after = 6 } = {}) {
+  return new Paragraph({
+    children: [runText(text, { size: pt(T.sizes.body) })],
+    spacing: { after: sp(after) }
+  });
+}
+
+function spacer(after) {
+  return new Paragraph({ children: [runText('')], spacing: { after: sp(after), line: 120 } });
+}
+
+// ---- Header band (accent-filled name + subline + contact) -------------------
+
+function bandShading() {
+  return { type: ShadingType.CLEAR, color: 'auto', fill: T.band };
+}
+
+function bandBlock(lines) {
+  const shade = bandShading();
+  return lines.map(
+    (ln, i) =>
+      new Paragraph({
+        children: [runText(ln.text, ln.opts)],
+        shading: shade,
+        spacing: {
+          before: i === 0 ? sp(6) : 0,
+          after: i === lines.length - 1 ? sp(6) : 0
+        },
+        indent: { left: 140, right: 140 }
+      })
+  );
+}
+
+function cvHeader(data) {
+  const lines = [
+    { text: data.name || '', opts: { size: pt(T.sizes.name), bold: true, color: T.color.onBand } }
+  ];
+  if (data.title) {
+    lines.push({
+      text: data.title,
+      opts: { size: pt(T.sizes.sectionHeader), color: T.color.onBandMuted, characterSpacing: 20 }
+    });
+  }
+  if (data.contact) {
+    lines.push({
+      text: data.contact,
+      opts: { size: pt(T.sizes.contact), color: T.color.onBandMuted }
+    });
+  }
+  return [...bandBlock(lines), spacer(6)];
+}
+
+// ---- Section headers --------------------------------------------------------
 
 function sectionHeader(label, { firstInColumn = false } = {}) {
   return new Paragraph({
     children: [
-      runText(label, {
+      runText(label.toUpperCase(), {
         size: pt(T.sizes.sectionHeader),
         bold: true,
-        color: T.color.header
+        color: T.color.header,
+        characterSpacing: 24
       })
     ],
-    spacing: { before: firstInColumn ? 0 : sp(8), after: sp(4) },
+    spacing: { before: firstInColumn ? 0 : sp(10), after: sp(4) },
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: 8, color: T.color.accent, space: 2 }
+      bottom: { style: BorderStyle.SINGLE, size: 8, color: T.color.accent, space: 3 }
     }
   });
 }
 
-function columnBreak() {
+function bullet(text, { reference = 'cv-bullets' } = {}) {
   return new Paragraph({
-    children: [new ColumnBreak()],
-    spacing: { before: 0, after: 0, line: 0 }
+    children: [runText(text, { size: pt(T.sizes.bullet) })],
+    spacing: { after: sp(2) },
+    alignment: AlignmentType.LEFT,
+    numbering: { reference, level: 0 }
   });
-}
-
-function nameBlock(data) {
-  const paras = [];
-  paras.push(
-    new Paragraph({
-      children: [
-        runText(data.name || '', {
-          size: pt(T.sizes.name),
-          bold: true,
-          color: T.color.name
-        })
-      ],
-      spacing: { after: sp(2) }
-    })
-  );
-  paras.push(
-    new Paragraph({
-      children: [runText(data.contact || '', { size: pt(T.sizes.contact) })],
-      spacing: { after: sp(4) }
-    })
-  );
-  return paras;
 }
 
 function skillLine(line) {
@@ -99,54 +145,41 @@ function skillLine(line) {
   });
 }
 
-function sidebarSummaryAndSkills(data) {
+// ---- Sidebar (Summary, Skills, Education, Certifications, Speaking) ----------
+
+function sidebarParagraphs(data) {
   const out = [];
   let first = true;
-  if (data.summary) {
-    out.push(sectionHeader('Summary', { firstInColumn: first }));
+  const header = (label) => {
+    out.push(sectionHeader(label, { firstInColumn: first }));
     first = false;
-    out.push(
-      new Paragraph({
-        children: [runText(data.summary, { size: pt(T.sizes.body) })],
-        spacing: { after: sp(6) }
-      })
-    );
+  };
+
+  if (data.summary) {
+    header('Summary');
+    out.push(bodyPara(data.summary));
   }
   if (data.skills?.length) {
-    out.push(sectionHeader('Skills', { firstInColumn: first }));
-    first = false;
+    header('Skills');
     for (const s of data.skills) out.push(skillLine(s));
   }
+  if (data.education?.length) {
+    header('Education');
+    for (const e of data.education) out.push(bodyPara(e, { after: 4 }));
+  }
   if (data.certifications?.length) {
-    for (const p of sidebarList('Certifications', data.certifications, { firstInColumn: first })) {
-      out.push(p);
-    }
-    first = false;
+    header('Certifications');
+    for (const c of data.certifications) out.push(bullet(c));
   }
   if (data.publicSpeaking?.length) {
-    for (const p of sidebarList('Public Speaking', data.publicSpeaking, { firstInColumn: first })) {
-      out.push(p);
-    }
-    first = false;
+    header('Public Speaking');
+    for (const p of data.publicSpeaking) out.push(bullet(p));
   }
+  if (!out.length) out.push(new Paragraph({ children: [runText('')] }));
   return out;
 }
 
-function sidebarEducation(data, { firstInColumn = true } = {}) {
-  const out = [];
-  if (data.education?.length) {
-    out.push(sectionHeader('Education', { firstInColumn }));
-    for (const e of data.education) {
-      out.push(
-        new Paragraph({
-          children: [runText(e, { size: pt(T.sizes.body) })],
-          spacing: { after: sp(4) }
-        })
-      );
-    }
-  }
-  return out;
-}
+// ---- Main column (Experience, Startup Achievements) -------------------------
 
 function roleSubline(role) {
   const dates =
@@ -164,7 +197,7 @@ function experienceRole(role) {
     new Paragraph({
       children: [
         runText(role.company || '', {
-          size: pt(T.sizes.body),
+          size: pt(T.sizes.roleTitle),
           bold: true,
           color: T.color.accent
         })
@@ -172,79 +205,84 @@ function experienceRole(role) {
       spacing: { before: sp(6), after: 0 }
     })
   );
+  const sub = roleSubline(role);
+  if (sub) {
+    out.push(
+      new Paragraph({
+        children: [runText(sub, { size: pt(T.sizes.body), italics: true, color: T.color.muted })],
+        spacing: { after: sp(3) }
+      })
+    );
+  }
+  for (const b of role.bullets || []) out.push(bullet(b));
+  return out;
+}
+
+function achievement(a) {
+  const out = [];
   out.push(
     new Paragraph({
       children: [
-        runText(roleSubline(role), {
-          size: pt(T.sizes.body),
-          italics: true
-        })
+        runText(a.title || '', { size: pt(T.sizes.body), bold: true, color: T.color.accent })
       ],
-      spacing: { after: sp(3) }
+      spacing: { before: sp(4), after: 0 }
     })
   );
-  for (const b of role.bullets || []) {
-    out.push(
-      new Paragraph({
-        children: [runText(b, { size: pt(T.sizes.bullet) })],
-        spacing: { after: sp(2) },
-        alignment: AlignmentType.LEFT,
-        numbering: { reference: 'cv-bullets', level: 0 }
-      })
-    );
-  }
+  if (a.body) out.push(bodyPara(a.body, { after: 3 }));
   return out;
 }
 
-function sidebarList(label, items, { firstInColumn = false } = {}) {
-  const out = [sectionHeader(label, { firstInColumn })];
-  for (const item of items) {
-    out.push(
-      new Paragraph({
-        children: [runText(item, { size: pt(T.sizes.body) })],
-        spacing: { after: sp(3) },
-        alignment: AlignmentType.LEFT,
-        numbering: { reference: 'cv-bullets', level: 0 }
-      })
-    );
+function mainParagraphs(data) {
+  const out = [];
+  let first = true;
+  const roles = data.experience || [];
+  if (roles.length) {
+    out.push(sectionHeader('Experience', { firstInColumn: first }));
+    first = false;
+    for (const role of roles) for (const p of experienceRole(role)) out.push(p);
   }
+  if (data.startupAchievements?.length) {
+    out.push(sectionHeader('Startup Achievements', { firstInColumn: first }));
+    first = false;
+    for (const a of data.startupAchievements) for (const p of achievement(a)) out.push(p);
+  }
+  if (!out.length) out.push(new Paragraph({ children: [runText('')] }));
   return out;
 }
 
-function startupAchievements(items) {
-  const out = [sectionHeader('Startup Achievements', { firstInColumn: false })];
-  items.forEach((a) => {
-    out.push(
-      new Paragraph({
+// ---- Two-panel body table ---------------------------------------------------
+
+function bodyTable(data) {
+  return new Table({
+    width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+    columnWidths: [SIDEBAR_WIDTH, MAIN_WIDTH],
+    borders: { ...CELL_BORDERS, insideHorizontal: NO_BORDER, insideVertical: NO_BORDER },
+    rows: [
+      new TableRow({
+        cantSplit: false,
         children: [
-          runText(a.title || '', {
-            size: pt(T.sizes.body),
-            bold: true,
-            color: T.color.accent
+          new TableCell({
+            width: { size: SIDEBAR_WIDTH, type: WidthType.DXA },
+            shading: { type: ShadingType.CLEAR, color: 'auto', fill: T.sidebarFill },
+            margins: { top: CELL_PAD, bottom: CELL_PAD, left: CELL_PAD, right: CELL_PAD },
+            verticalAlign: VerticalAlign.TOP,
+            borders: CELL_BORDERS,
+            children: sidebarParagraphs(data)
+          }),
+          new TableCell({
+            width: { size: MAIN_WIDTH, type: WidthType.DXA },
+            margins: { top: CELL_PAD, bottom: CELL_PAD, left: CELL_PAD + 60, right: 60 },
+            verticalAlign: VerticalAlign.TOP,
+            borders: CELL_BORDERS,
+            children: mainParagraphs(data)
           })
-        ],
-        spacing: { before: sp(4), after: 0 }
+        ]
       })
-    );
-    if (a.body) {
-      out.push(
-        new Paragraph({
-          children: [runText(a.body, { size: pt(T.sizes.body) })],
-          spacing: { after: sp(3) }
-        })
-      );
-    }
+    ]
   });
-  return out;
 }
 
-function mainExperience(roles, { label = 'Experience' } = {}) {
-  const out = [sectionHeader(label, { firstInColumn: true })];
-  for (const role of roles) {
-    for (const p of experienceRole(role)) out.push(p);
-  }
-  return out;
-}
+// ---- Shared doc scaffolding -------------------------------------------------
 
 function buildStyles() {
   return {
@@ -276,109 +314,41 @@ function buildNumbering() {
   };
 }
 
-function fullWidthProps({ type } = {}) {
+function pageProps() {
   return {
-    type,
     page: {
       size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
       margin: { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN }
-    }
-  };
-}
-
-function twoColumnProps({ type } = {}) {
-  return {
-    type,
-    page: {
-      size: { width: PAGE_WIDTH, height: PAGE_HEIGHT },
-      margin: { top: MARGIN, right: MARGIN, bottom: MARGIN, left: MARGIN }
-    },
-    column: {
-      count: 2,
-      space: COL_SPACE,
-      equalWidth: false,
-      children: [
-        new Column({ width: SIDEBAR_WIDTH, space: COL_SPACE }),
-        new Column({ width: MAIN_WIDTH })
-      ]
     }
   };
 }
 
 export function renderCV(data) {
-  const roles = data.experience || [];
-  const splits = roles.length > SPLIT_AFTER_ROLE;
-  const page1Roles = splits ? roles.slice(0, SPLIT_AFTER_ROLE) : roles;
-  const page2Roles = splits ? roles.slice(SPLIT_AFTER_ROLE) : [];
-
-  const sections = [];
-
-  sections.push({
-    properties: fullWidthProps({ type: SectionType.CONTINUOUS }),
-    children: nameBlock(data)
-  });
-
-  const page1Sidebar = sidebarSummaryAndSkills(data);
-  if (!splits && data.education?.length) {
-    const firstInCol = page1Sidebar.length === 0;
-    for (const p of sidebarEducation(data, { firstInColumn: firstInCol })) {
-      page1Sidebar.push(p);
-    }
-  }
-  const page1Main = mainExperience(page1Roles, { label: 'Experience' });
-  if (!splits && data.startupAchievements?.length) {
-    for (const p of startupAchievements(data.startupAchievements)) page1Main.push(p);
-  }
-
-  sections.push({
-    properties: twoColumnProps({ type: splits ? SectionType.NEXT_PAGE : undefined }),
-    children: [...page1Sidebar, columnBreak(), ...page1Main]
-  });
-
-  if (splits) {
-    const page2Sidebar = sidebarEducation(data, { firstInColumn: true });
-    const page2Main = mainExperience(page2Roles, { label: 'Experience (continued)' });
-    if (data.startupAchievements?.length) {
-      for (const p of startupAchievements(data.startupAchievements)) page2Main.push(p);
-    }
-    sections.push({
-      properties: twoColumnProps(),
-      children: [...page2Sidebar, columnBreak(), ...page2Main]
-    });
-  }
-
+  const children = [...cvHeader(data), bodyTable(data)];
   return {
     styles: buildStyles(),
     numbering: buildNumbering(),
-    sections
+    sections: [{ properties: pageProps(), children }]
   };
 }
 
-export function renderCL(data) {
-  const out = [];
+// ---- Cover letter (matching band header + standard letter body) -------------
 
-  out.push(
-    new Paragraph({
-      children: [
-        runText(data.senderName || '', {
-          size: pt(14),
-          bold: true,
-          color: T.color.name
-        })
-      ],
-      spacing: { after: sp(2) }
-    })
-  );
-  out.push(
-    new Paragraph({
-      children: [runText(data.senderContact || '', { size: pt(T.sizes.contact) })],
-      spacing: { after: sp(8) },
-      border: {
-        bottom: { style: BorderStyle.SINGLE, size: 4, color: T.color.accent, space: 6 }
-      }
-    })
-  );
-  out.push(new Paragraph({ children: [runText('')], spacing: { after: sp(12) } }));
+function clHeader(data) {
+  const lines = [
+    { text: data.senderName || '', opts: { size: pt(18), bold: true, color: T.color.onBand } }
+  ];
+  if (data.senderContact) {
+    lines.push({
+      text: data.senderContact,
+      opts: { size: pt(T.sizes.contact), color: T.color.onBandMuted }
+    });
+  }
+  return [...bandBlock(lines), spacer(12)];
+}
+
+export function renderCL(data) {
+  const out = [...clHeader(data)];
 
   out.push(
     new Paragraph({
@@ -465,6 +435,6 @@ export function renderCL(data) {
   return {
     styles: buildStyles(),
     numbering: buildNumbering(),
-    sections: [{ properties: fullWidthProps(), children: out }]
+    sections: [{ properties: pageProps(), children: out }]
   };
 }

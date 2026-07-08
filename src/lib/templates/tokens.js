@@ -15,10 +15,20 @@ export const MODERN = {
   id: 'modern',
   label: 'Modern',
   fonts: { body: 'Calibri', heading: 'Calibri', name: 'Calibri' },
-  sizes: { name: 20, contact: 10, sectionHeader: 12, body: 10.5, bullet: 10.5 },
-  color: { name: '1A4D5C', header: '1A4D5C', body: '111827', accent: '1A4D5C' },
+  sizes: { name: 24, contact: 10, sectionHeader: 11, body: 10.5, bullet: 10.5, roleTitle: 11.5 },
+  color: {
+    name: '1A4D5C',
+    header: '1A4D5C',
+    body: '111827',
+    accent: '1A4D5C',
+    onBand: 'FFFFFF',
+    onBandMuted: 'D3E1E4',
+    muted: '55666B'
+  },
+  band: '1A4D5C',
+  sidebarFill: 'F2F6F7',
   page: { marginTwips: 1134 },
-  columns: { count: 2, spaceTwips: 360, sidebarFraction: 0.38 },
+  columns: { sidebarFraction: 0.36 },
   bulletChar: '•'
 };
 
