@@ -151,7 +151,7 @@ function sidebarEducation(data, { firstInColumn = true } = {}) {
 function roleSubline(role) {
   const dates =
     role.startDate && role.endDate
-      ? `${role.startDate} – ${role.endDate}`
+      ? `${role.startDate} - ${role.endDate}`
       : role.startDate || role.endDate || '';
   const parts = [role.title || '', role.location || '', dates].filter(Boolean);
   if (parts.length) return parts.join(' · ');

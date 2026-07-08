@@ -105,7 +105,7 @@ function dateRange(role) {
   if (!role.startDate && !role.endDate) return '';
   const start = role.startDate || '';
   const end = role.endDate || '';
-  if (start && end) return `${start} – ${end}`;
+  if (start && end) return `${start} - ${end}`;
   return start || end;
 }
 

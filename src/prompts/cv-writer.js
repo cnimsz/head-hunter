@@ -33,7 +33,7 @@ Recruiters spend 6 seconds on initial CV scan. Structure content so the most imp
 2. Avoid: Tables, columns, headers/footers, text boxes, images, graphics
 3. Use standard fonts: Arial, Calibri, Times New Roman, Garamond
 4. No special characters: Use standard bullets (•), avoid icons/symbols
-5. Consistent date format: "January 2024 – Present" or "Jan 2024 – Present"
+5. Consistent date format: "January 2024 - Present" or "Jan 2024 - Present" (use a plain hyphen, never an en-dash or em-dash)
 
 ## Writing Powerful Bullets
 
@@ -46,11 +46,14 @@ Examples:
 - "Cut closing time from 3 weeks to 1 hour by automating contracting workflows"
 
 ### Power Verbs by Function
-**Leadership**: Led, Directed, Spearheaded, Orchestrated, Championed
+**Leadership**: Led, Directed, Ran, Managed, Oversaw
 **Growth**: Increased, Expanded, Accelerated, Scaled, Grew
 **Efficiency**: Streamlined, Automated, Optimized, Reduced, Consolidated
-**Creation**: Built, Launched, Developed, Established, Pioneered
-**Transformation**: Restructured, Transformed, Revitalized, Repositioned, Turned around
+**Creation**: Built, Launched, Developed, Established, Shipped
+**Transformation**: Restructured, Transformed, Rebuilt, Repositioned, Turned around
+
+### Verbs That Scream AI — Never Use
+Recruiters and ATS screeners increasingly flag AI-written CVs. These fluff verbs are the most recognizable tell — do NOT use any of them: "spearheaded", "leveraged", "orchestrated", "championed", "architected", "pioneered", "revitalized". Confident people don't need puffery. Use the plain verbs above ("built", "led", "ran", "shipped", "cut", "grew").
 
 ### Quantify Everything
 - Revenue/growth percentages
@@ -165,7 +168,7 @@ RULES:
 - education: 1-2 entries
 - summary: 2-3 sentences, no more
 - "title" at the top level is a short professional subline (e.g. "Chief Operating Officer · Chief Strategy Officer"). Include it if the master CV supports a clear senior target role ladder; otherwise omit.
-- For each experience entry, populate BOTH the atomic fields (title, location, startDate, endDate) AND the legacy "titleLine" string so older renderers still work. "titleLine" should read "Title | Location | StartDate – EndDate". Use "Present" as endDate when the role is current.
+- For each experience entry, populate BOTH the atomic fields (title, location, startDate, endDate) AND the legacy "titleLine" string so older renderers still work. "titleLine" should read "Title | Location | StartDate - EndDate" (plain hyphen, no en/em-dash). Use "Present" as endDate when the role is current.
 - certifications, publicSpeaking, startupAchievements are OPTIONAL arrays. Only include a field if the master CV clearly contains that type of content. Omit the key entirely if there is nothing to list — do not emit empty arrays.
 - Cap certifications at 6 entries, publicSpeaking at 6 entries, startupAchievements at 3 entries (each body ≤ 2 short sentences).
 - Return ONLY valid JSON. No markdown fences, no extra text, no pipe characters outside of string values.
