@@ -31,7 +31,7 @@ export default function App() {
     getSupabaseClient();
   }, []);
 
-  async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken }) {
+  async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken, atsSystem }) {
     setError(null);
     setResult(null);
     setIsGenerating(true);
@@ -43,6 +43,7 @@ export default function App() {
         companyName,
         profile: profileForGeneration(getProfile()),
         turnstileToken,
+        atsSystem,
         onStep: setCurrentStep
       });
       setResult(out);

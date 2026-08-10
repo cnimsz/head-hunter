@@ -10,7 +10,8 @@ export function buildGapAnalysisPrompt({
   masterCvText = '',
   companyName = '',
   roleTitle = '',
-  previouslyDismissed = []
+  previouslyDismissed = [],
+  atsSystem = 'auto'
 }) {
   const dismissedBlock = previouslyDismissed.length
     ? `
@@ -96,6 +97,28 @@ ${jobDescription}
 ### Company and role
 
 ${company} — ${role}
+
+## Ashby criteria simulator (conditional)
+
+The user has indicated the target ATS is: **${atsSystem === 'auto' ? 'unknown — detect from the posting' : atsSystem}**.
+
+If that is Ashby, or the job posting indicates the company uses Ashby (jobs.ashbyhq.com / ashbyhq.com URL, or stated in the JD), additionally simulate Ashby's AI-Assisted Application Review. Ashby's AI reads the full CV against recruiter-defined criteria and marks each Meets / Does not Meet / Undecided with a citation to the exact evidence line — no score, no auto-reject; recruiters filter by these results.
+
+1. Reverse-engineer the JD into the atomic, resume-verifiable criteria the recruiter likely configured (must_have / should_have / nice_to_have). Split compound requirements. Treat "This role is not for..." items as negative criteria.
+2. Evaluate each criterion against the tailored CV exactly as Ashby would: verdict + the single verbatim CV line that proves it (or null).
+3. Any "undecided" or "does_not_meet" on a must-have is a rewrite target — reflect it in gaps and match_score.
+
+When simulating, add this field to the JSON output (omit entirely for non-Ashby postings):
+
+"ashby_criteria_review": [
+  {
+    "criterion": "Atomic, resume-verifiable requirement",
+    "tier": "must_have",
+    "verdict": "meets",
+    "citation": "Verbatim CV line that proves it, or null",
+    "fix": "One-sentence rewrite suggestion — only when verdict is not 'meets'"
+  }
+]
 
 ## Your task
 

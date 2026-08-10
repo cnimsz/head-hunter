@@ -21,6 +21,15 @@ export function getTheme() {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+const ATS_SYSTEMS = ['auto', 'ashby', 'greenhouse', 'lever', 'workday'];
+export function saveAtsSystem(system) {
+  localStorage.setItem(k('ats'), system);
+}
+export function getAtsSystem() {
+  const s = localStorage.getItem(k('ats'));
+  return ATS_SYSTEMS.includes(s) ? s : 'auto';
+}
+
 export function getConsent() {
   return localStorage.getItem(k('consent')) === 'true';
 }

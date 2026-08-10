@@ -37,6 +37,10 @@ Total: **3–9 gaps**. Be selective — only surface gaps that are genuinely int
 - **rationale** — 1–3 sentences. Why this specific gap matters specifically for THIS role at THIS company. Use NAMED specifics: named customers in the company's customer base, named methodologies, named competitor or partner companies, named hiring manager priorities.
 - **question** — ONE sentence, answerable by the candidate in ONE sentence. Not multiple-choice. Not open-ended. Not three sub-questions joined by "and".
 
+## Ashby criteria simulator (conditional)
+
+When the posting is on Ashby (jobs.ashbyhq.com / ashbyhq.com URL, or stated in the JD), additionally simulate Ashby's AI-Assisted Application Review before the gap analysis: reverse-engineer the JD into atomic must_have / should_have / nice_to_have criteria (split compound requirements; "This role is not for..." items are negative criteria), then mark each Meets / Does not Meet / Undecided with the verbatim CV line as citation — exactly as Ashby's AI does. Output as an `ashby_criteria_review` array (see `src/prompts/gap-analysis.js`); omit for non-Ashby postings. Any non-"meets" verdict on a must-have is a rewrite target and must be reflected in gaps and match_score.
+
 ## Optional: reframe
 
 If you spot something in the candidate's CV that looks like a weakness for this role but is actually a strength, include a `reframe` object with a 1–2 sentence summary and a suggested positioning line. Only include if credible — do NOT manufacture one.

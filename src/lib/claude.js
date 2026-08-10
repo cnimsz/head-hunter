@@ -187,6 +187,7 @@ export async function generateApplication({
   companyName,
   profile = null,
   turnstileToken,
+  atsSystem = 'auto',
   onStep = () => {}
 }) {
   if (!turnstileToken) throw new Error('Bot challenge required. Solve the challenge and retry.');
@@ -196,7 +197,8 @@ export async function generateApplication({
     prompt: buildCVPrompt({
       jobDescription,
       masterCV: cvText,
-      learnings: formatLearningsBlock('cv')
+      learnings: formatLearningsBlock('cv'),
+      atsSystem
     }),
     masterCV: cvText,
     turnstileToken

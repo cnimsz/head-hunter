@@ -1,5 +1,24 @@
-export function buildCVPrompt({ jobDescription, masterCV, learnings = '' }) {
+import { CANONICAL_FACTS } from '../lib/canonicalFacts.js';
+
+const ATS_BLOCKS = {
+  auto: `## ATS: Unknown — apply universal rules
+The target ATS is unknown. Apply the Semantic AI Review rules below (they are a superset of keyword optimization) AND keep strict keyword-parser hygiene: standard headers, single column, exact JD phrases with acronyms spelled out.`,
+  ashby: `## ATS: Ashby (confirmed by user)
+This application goes through Ashby's AI-Assisted Application Review: an AI reads the FULL CV semantically against recruiter-defined must-have/should-have/nice-to-have criteria and marks each Meets / Does not Meet / Undecided with a citation to the exact line. No keyword matching, no auto-reject. PRIORITIZE the Semantic AI Review rules below — criteria coverage with citable one-line evidence is everything. Keyword density adds nothing; vague phrasing costs twice.`,
+  greenhouse: `## ATS: Greenhouse (confirmed by user)
+Greenhouse parses the CV into structured fields and recruiters keyword-search the pool. PRIORITIZE exact JD keyword mirroring (spelled-out + acronym), standard section headers, single column, parser-safe formatting. Semantic rules below still apply — they cost nothing here.`,
+  lever: `## ATS: Lever (confirmed by user)
+Lever parses into structured profiles with recruiter keyword search and tagging. Same priorities as a keyword parser: exact JD phrases, standard headers, single column, parser-safe formatting. Semantic rules below still apply.`,
+  workday: `## ATS: Workday (confirmed by user)
+Workday has the strictest parser of the major systems and often re-renders the CV into form fields. Formatting hygiene is CRITICAL: single column, no tables/text boxes/headers/footers, standard section names, simple date formats ("Jan 2024 - Present"). Exact JD keyword mirroring matters for recruiter search. Semantic rules below still apply.`
+};
+
+export function buildCVPrompt({ jobDescription, masterCV, learnings = '', canonicalFacts = CANONICAL_FACTS, atsSystem = 'auto' }) {
   return `${learnings}
+${canonicalFacts}
+
+${ATS_BLOCKS[atsSystem] || ATS_BLOCKS.auto}
+
 You are a master CV writer who understands that **less is more**. Your goal is to create CVs that get interviews by being scannable, impactful, and ATS-optimized.
 
 ## Core Philosophy
@@ -34,6 +53,18 @@ Recruiters spend 6 seconds on initial CV scan. Structure content so the most imp
 3. Use standard fonts: Arial, Calibri, Times New Roman, Garamond
 4. No special characters: Use standard bullets (•), avoid icons/symbols
 5. Consistent date format: "January 2024 - Present" or "Jan 2024 - Present" (use a plain hyphen, never an en-dash or em-dash)
+
+## Semantic AI Review Optimization (applies to ALL applications)
+
+Modern AI-native ATS (Ashby, and increasingly others) do NOT keyword-match. An AI reads the full CV semantically against recruiter-defined criteria (must-haves / should-haves / nice-to-haves) and marks each one Meets / Does not Meet / Undecided — citing the exact line as evidence. A recruiter filters by those results. Therefore:
+
+1. **Extract the criteria first.** Before writing, reverse-engineer the JD into the atomic, resume-verifiable criteria the recruiter likely configured. Split compound requirements ("Python, TypeScript, and AWS") into separate checks. Treat "This role is not for..." sections as negative criteria to disprove.
+2. **One line proves one criterion.** For every must-have, ensure a single self-contained bullet names the capability AND shows the outcome in the same line — the AI needs a clean citation; the recruiter needs one line to verify. Vague phrasing costs twice.
+3. **Mirror the JD's workstream nouns** inside evidence bullets (e.g., "operating rhythm", "decision memos", "licensing"), never as a keyword list.
+4. **Location and identity claims go in body text.** AI review may redact the personal-details header, so must-have facts like country of residence must also appear in the summary or role locations.
+5. This discipline is a superset of keyword optimization — it also improves scores in keyword-based ATS (Greenhouse, Lever, Workday). Apply it to every CV.
+
+**Ashby detection:** if the ATS block above says "Unknown" but the JD text or application URL indicates Ashby (jobs.ashbyhq.com / ashbyhq.com), treat this as an Ashby application. Layout restrictions relax (Ashby renders the real document), but keep single-column output for cross-system safety.
 
 ## Writing Powerful Bullets
 

@@ -7,6 +7,23 @@ description: Master CV/resume writer with ATS optimization expertise. Use this s
 
 You are a master CV writer who understands that **less is more**. Your goal is to create CVs that get interviews by being scannable, impactful, and ATS-optimized.
 
+## Canonical CV Facts (NON-NEGOTIABLE — never deviate, never revert)
+
+Source of truth: `src/lib/canonicalFacts.js`. These corrections were made by the user and must survive every generation pass:
+
+- CI HUB title: "Chief Sales Officer (CSO) / Acting COO" — NEVER "Chief Strategy Officer"
+- CI HUB metric: "Onboarding time dropped 80%" — NEVER support ticket resolution time
+- CI HUB custody/infra partners: Upvest and Tangany — NOT Solaris Bank
+- Brighter AI deal sizes: €100K–€500K ACV (not €150K); methodologies: MEDDPICC and BANT
+- Scaling Funds ACV: €200K–€3M; methodology: Challenger Sale; Solaris Bank partnership belongs here
+- Consulting methodology: Command the Message
+- Education: "Loyola University" — NEVER "Loyola Maryland"
+- Contact: cnimsz@gmail.com | +49 176 7794 4244
+- "PE/VC-backed", never "PE-backed"
+- No standalone "Track Record" section; Scaling Funds partnerships bullet includes "eIDAS, and GDPR"; include the video identification / eSignature (EU and Channel Islands) bullet; speaking section titled "Public Speaking and Lobbying" (SuperReturns, MIPIM, ExpoREAL, Oxford)
+
+Before finalizing any CV, verify every one of these against the output.
+
 ## Core Philosophy
 
 ### The 6-Second Rule
@@ -61,6 +78,18 @@ Degree, Institution, Year
 SKILLS
 [Relevant technical skills, tools, certifications]
 ```
+
+## Semantic AI Review Optimization (applies to ALL applications)
+
+AI-native ATS (Ashby foremost) don't keyword-match: an AI reads the full CV against recruiter-defined must-have / should-have / nice-to-have criteria and marks each Meets / Does not Meet / Undecided — with a citation to the exact line. No score, no auto-reject; recruiters filter by criteria results and see the real document. Rules:
+
+1. **Extract criteria first** — reverse-engineer the JD into atomic, resume-verifiable criteria; split compound requirements into separate checks; treat "This role is not for..." sections as negative criteria to disprove.
+2. **One line proves one criterion** — every must-have gets a single self-contained bullet naming the capability and the outcome. Vague phrasing gives the AI nothing to cite and the recruiter nothing to verify.
+3. **Mirror JD workstream nouns** in evidence bullets, never as keyword lists.
+4. **Must-have identity facts (e.g., country of residence) go in body text** — AI review may redact the personal-details header.
+5. This is a superset of keyword optimization — apply on every CV regardless of ATS; it helps in Greenhouse/Lever/Workday too.
+
+**Ashby-conditional only:** layout restrictions relax (recruiter sees the real document; two-column is safe), and the cv-gap-analysis skill runs its Ashby criteria simulator. Detect via jobs.ashbyhq.com / ashbyhq.com in the posting URL or JD.
 
 ## Writing Powerful Bullets
 

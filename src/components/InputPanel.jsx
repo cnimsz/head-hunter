@@ -1,9 +1,24 @@
 import { useMemo, useState } from 'react';
 import { extractTextFromFile } from '../lib/cvParser.js';
-import { getMasterCV, saveMasterCV, getConsent, setConsent } from '../lib/storage.js';
+import {
+  getMasterCV,
+  saveMasterCV,
+  getConsent,
+  setConsent,
+  getAtsSystem,
+  saveAtsSystem
+} from '../lib/storage.js';
 import { updateProfileFromText } from '../lib/profile.js';
 import MasterCVCompiler from './MasterCVCompiler.jsx';
 import Turnstile, { resetTurnstile } from './Turnstile.jsx';
+
+const ATS_OPTIONS = [
+  { value: 'auto', label: 'Auto-detect' },
+  { value: 'ashby', label: 'Ashby' },
+  { value: 'greenhouse', label: 'Greenhouse' },
+  { value: 'lever', label: 'Lever' },
+  { value: 'workday', label: 'Workday' }
+];
 
 const STEP_LABEL = {
   idle: '',
@@ -27,6 +42,12 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
   const [compilerOpen, setCompilerOpen] = useState(false);
   const [savedCV, setSavedCV] = useState(initialSaved);
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [atsSystem, setAtsSystem] = useState(getAtsSystem());
+
+  function handleAtsChange(value) {
+    setAtsSystem(value);
+    saveAtsSystem(value);
+  }
 
   function handleConsentChange(checked) {
     if (!checked && consent) {
@@ -87,7 +108,8 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
       jobDescription: jobDescription.trim(),
       cvText,
       companyName: companyName.trim(),
-      turnstileToken: tokenForCall
+      turnstileToken: tokenForCall,
+      atsSystem
     });
   }
 
@@ -115,6 +137,26 @@ export default function InputPanel({ onGenerate, isGenerating, currentStep, onFi
         placeholder="e.g. Acme Robotics - Senior Engineer"
         className="w-full px-3 py-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
       />
+
+      <fieldset className="mt-2">
+        <legend className="text-sm font-medium">
+          ATS System <span className="text-slate-400 font-normal">(tailors optimization strategy)</span>
+        </legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+          {ATS_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-1.5 text-sm">
+              <input
+                type="radio"
+                name="atsSystem"
+                value={opt.value}
+                checked={atsSystem === opt.value}
+                onChange={() => handleAtsChange(opt.value)}
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="mt-2">
         <div className="flex items-center justify-between mb-1">

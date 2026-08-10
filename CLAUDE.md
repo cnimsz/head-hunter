@@ -13,7 +13,7 @@ File parsing runs client-side in the browser; Claude calls and the auth-gated fe
 - **Bot challenge:** Cloudflare Turnstile gates the public edge function. Site key is public (in the bundle); secret key + HMAC session secret live as Supabase secrets.
 - **Auth:** Supabase Auth (magic link) gates the Gap Analysis and Find Roles features. Public surfaces (generation pipeline) stay unauthenticated and only need Turnstile.
 - **Supabase:** Project ref `bcenuebydpkyfmtzfcku` — edge functions use `ANTHROPIC_API_KEY`, `TURNSTILE_SECRET_KEY`, `HEAD_HUNTER_SESSION_SECRET`, and (for jobsearch) `RAPIDAPI_KEY` secrets.
-- **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, `consent`, `template`, `auth`, and `learnings:*`.
+- **Storage:** localStorage (prefix: `cv-toolkit:`) — includes `cv`, `theme`, `profile`, `consent`, `template`, `ats`, `auth`, and `learnings:*`.
 - **Deploy:** Vercel — https://head-hunter-fawn.vercel.app
 
 ## Architecture
@@ -175,6 +175,10 @@ Cost: ~$0.05–$0.10 per research call at Haiku 4.5 pricing (was $0.30+ on Sonne
 **Browser-only execution:** All file parsing (PDF via pdfjs, DOCX via mammoth, ZIP via jszip) runs client-side. Claude API calls are proxied through a Supabase Edge Function (`head-hunter-claude`) that holds the Anthropic API key as a secret — no key is stored or exposed client-side.
 
 **Structured output → editable forms → DOCX:** Claude returns JSON matching the schemas above. OutputPanel renders it as formatted display. Users can switch to edit mode (EditableCV / EditableCoverLetter) to modify structured fields. DOCX generation takes the structured data directly — no markdown→docx conversion needed.
+
+**Canonical CV facts:** `src/lib/canonicalFacts.js` holds user corrections that must never regress (titles, metrics, deal ranges, school name, required bullets). Injected into every CV prompt. Previously these lived only in localStorage learnings, which meant they were lost on cache clear and on other devices — hard-coding them fixed repeated regressions. Add new corrections here, not only via FeedbackModal.
+
+**ATS targeting:** an ATS radio group in InputPanel (Auto-detect / Ashby / Greenhouse / Lever / Workday) persists to `cv-toolkit:ats` and flows through `generateApplication({ atsSystem })` → `buildCVPrompt({ atsSystem })`, selecting one of the `ATS_BLOCKS` in `src/prompts/cv-writer.js`. Ashby is AI-native (semantic criteria review with citations — keyword density is irrelevant); Greenhouse/Lever/Workday are keyword parsers where formatting hygiene and exact JD phrasing dominate. The universal "one line proves one criterion" rules apply in every mode since they're a superset of keyword optimization. `runGapAnalysis` reads the same setting to trigger the Ashby criteria simulator (`ashby_criteria_review`).
 
 **Learned preferences:** Users upload revised versions of generated docs via FeedbackModal. Claude diffs original vs revised and extracts durable style rules. Rules are stored in localStorage (`cv-toolkit:learnings:{skill}`, max 40 per skill) and appended to future prompts via `formatLearningsBlock()`.
 

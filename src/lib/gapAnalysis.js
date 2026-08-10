@@ -1,5 +1,5 @@
 import { getSupabaseClient, gapAnalysisFunctionUrl } from './supabase.js';
-import { getMasterCV, saveMasterCV } from './storage.js';
+import { getMasterCV, saveMasterCV, getAtsSystem } from './storage.js';
 import { buildGapAnalysisPrompt } from '../prompts/gap-analysis.js';
 
 const MASTER_UPDATES_HEADER = '## Gap-Analysis Updates';
@@ -56,7 +56,8 @@ export async function runGapAnalysis({
     masterCvText,
     companyName,
     roleTitle,
-    previouslyDismissed
+    previouslyDismissed,
+    atsSystem: getAtsSystem()
   });
 
   const res = await fetch(fnUrl, {
