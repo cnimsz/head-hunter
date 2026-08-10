@@ -17,15 +17,23 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@eslint/js@^9.39.4",
         "npm:@supabase/supabase-js@^2.45.0",
         "npm:@vitejs/plugin-react@^4.3.1",
         "npm:autoprefixer@^10.4.20",
         "npm:docx@^8.5.0",
+        "npm:eslint-config-prettier@^9.1.2",
+        "npm:eslint-plugin-react-hooks@^5.2.0",
+        "npm:eslint-plugin-react-refresh@~0.4.26",
+        "npm:eslint-plugin-react@^7.37.5",
+        "npm:eslint@^9.39.4",
         "npm:file-saver@^2.0.5",
+        "npm:globals@^15.15.0",
         "npm:jszip@^3.10.1",
         "npm:mammoth@^1.8.0",
         "npm:pdfjs-dist@^4.6.82",
         "npm:postcss@^8.4.47",
+        "npm:prettier@^3.8.4",
         "npm:react-dom@^18.3.1",
         "npm:react@^18.3.1",
         "npm:tailwindcss@^3.4.13",
