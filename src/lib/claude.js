@@ -12,7 +12,10 @@ export const MAX_TOKENS = 8000;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 export const EDGE_FN_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/head-hunter-claude` : '';
 
-async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToken, model }) {
+async function callClaude({
+  prompt, masterCV, tools, turnstileToken, sessionToken, model,
+  callKind, batchId, companyName
+}) {
   if (!EDGE_FN_URL) {
     throw new Error(
       'VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).'
@@ -25,11 +28,16 @@ async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToke
   };
   if (masterCV) payload.masterCV = masterCV;
   if (tools) payload.tools = tools;
+  // companyName is used server-side ONLY as the company_research cache key
+  // (normalised there). Sending it also keeps the JD prompt as-is.
+  if (companyName) payload.companyName = companyName;
 
   const headers = { 'Content-Type': 'application/json' };
   if (turnstileToken) headers['cf-turnstile-token'] = turnstileToken;
   else if (sessionToken) headers['x-session-token'] = sessionToken;
   else throw new Error('Missing bot challenge token. Solve the challenge and retry.');
+  if (batchId) headers['x-batch-id'] = batchId;
+  if (callKind) headers['x-call-kind'] = callKind;
 
   let res;
   try {
@@ -46,13 +54,32 @@ async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToke
     const body = await res.text().catch(() => '');
     if (res.status === 401)
       throw new Error('Bot challenge failed or session expired. Refresh and retry.');
-    if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
+    if (res.status === 429) {
+      // Two flavours of 429 now: per-IP burst (retry-in-a-minute) vs.
+      // per-session daily cap (DAILY_LIMIT). The server carries the marker
+      // in the JSON body when it's the daily cap.
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed?.error === 'DAILY_LIMIT') {
+          const reset = parsed.resets_at ? new Date(parsed.resets_at).toUTCString() : 'UTC midnight';
+          throw new Error(`Daily tailoring limit reached (${parsed.limit ?? 5}). Resets at ${reset}.`);
+        }
+      } catch { /* fall through */ }
+      throw new Error('Rate limit reached. Wait a minute and retry.');
+    }
     if (res.status === 413)
       throw new Error('Your CV or job description is too long. Trim and retry.');
+    if (res.status === 503) {
+      // capacity-indicator §6 empty state.
+      throw new Error('NO_CAPACITY');
+    }
+    if (res.status === 403)
+      throw new Error('Session/batch mismatch. Refresh and start a new tailoring.');
     throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
   }
 
   const newSession = res.headers.get('x-session-token') || null;
+  const newBatchId = res.headers.get('x-batch-id') || null;
 
   const data = await res.json();
   // When server tools (e.g. web_search) are used, the response contains a
@@ -62,7 +89,7 @@ async function callClaude({ prompt, masterCV, tools, turnstileToken, sessionToke
   const textBlocks = blocks.filter((b) => b?.type === 'text' && typeof b.text === 'string');
   const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : '';
   if (!text) throw new Error('Malformed response from Claude (no text content).');
-  return { text, sessionToken: newSession };
+  return { text, sessionToken: newSession, batchId: newBatchId };
 }
 
 function sanitizeDashes(value) {
@@ -201,10 +228,12 @@ export async function generateApplication({
       atsSystem
     }),
     masterCV: cvText,
-    turnstileToken
+    turnstileToken,
+    callKind: 'cv'
   });
-  let session = cvCall.sessionToken;
+  const session = cvCall.sessionToken;
   if (!session) throw new Error('Server did not return a session token. Refresh and retry.');
+  const batchId = cvCall.batchId; // may be null if telemetry failed; server keeps going
   const cvData = sanitizeDashes(extractJson(cvCall.text));
   const cv = cvDataToText(cvData);
 
@@ -216,10 +245,14 @@ export async function generateApplication({
       cvHighlights: cv.slice(0, 2000),
       learnings: formatLearningsBlock('linkedIn')
     }),
-    masterCV: cvText,
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+    // masterCV intentionally omitted — the research prompt uses cvHighlights,
+    // not the full master, so paying cache-write cost here was pure waste.
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
     sessionToken: session,
-    model: RESEARCH_MODEL
+    model: RESEARCH_MODEL,
+    callKind: 'research',
+    batchId,
+    companyName
   });
   const research = sanitizeDashes(extractJson(researchCall.text));
   const hiringManagerName =
@@ -239,7 +272,9 @@ export async function generateApplication({
       learnings: formatLearningsBlock('coverLetter')
     }),
     masterCV: cvText,
-    sessionToken: session
+    sessionToken: session,
+    callKind: 'coverLetter',
+    batchId
   });
   const clData = sanitizeDashes(extractJson(clCall.text));
   const coverLetter = clDataToText(clData);
