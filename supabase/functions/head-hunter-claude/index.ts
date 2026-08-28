@@ -213,23 +213,27 @@ function nextUtcMidnightIso(): string {
   return next.toISOString();
 }
 
-// Wrap a synthesised "cache hit" payload so the client sees the same shape
-// it does from Anthropic.
-function synthesizeCacheHitResponse(research: Record<string, unknown>): unknown {
-  return {
-    id: `cache_hit_${Date.now()}`,
-    type: "message",
-    role: "assistant",
-    model: "cache",
-    content: [{ type: "text", text: JSON.stringify(research) }],
-    stop_reason: "end_turn",
-    usage: {
-      input_tokens: 0,
-      output_tokens: 0,
-      cache_read_input_tokens: 0,
-      cache_creation_input_tokens: 0,
-    },
-  };
+// System-prompt directive injected on a research cache hit — tells the model
+// to skip company research and focus on the applicant-specific fields. The
+// server splices the cached brief back into the JSON after the model returns,
+// so any paraphrase the model produces is overwritten.
+function cachedBriefSystemPrompt(cachedBrief: string): string {
+  return [
+    "The company research has already been completed for a previous applicant.",
+    "A pre-written companyBrief is provided in the <cached_company_brief> tag below.",
+    "The server will attach this brief to your JSON response automatically —",
+    "you MUST NOT include a `companyBrief` field in your output, and you MUST",
+    "NOT attempt to research the company or use any web tools. Focus entirely",
+    "on the applicant-specific fields for THIS job description and CV:",
+    "  - hiringManager (identify from the JD; infer title/rationale — a null",
+    "    name and low confidence are acceptable when no LinkedIn URL is verified)",
+    "  - linkedInMessage",
+    "  - linkedInCharCount",
+    "",
+    "<cached_company_brief>",
+    cachedBrief,
+    "</cached_company_brief>",
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -411,40 +415,32 @@ serve(async (req) => {
   }
 
   // ---- Company research cache check (research call only) ------------------
-  // Only tests the cache when this is the research call AND we have a usable
-  // company name. On a live hit, skip the Anthropic call, record a $0
-  // "call" against the counters, and return a synthesised response.
-  //
-  // Correctness caveat: spec §6 says "return the cached payload" — that
-  // means a second applicant to the same company gets the first applicant's
-  // hiringManager and linkedInMessage. Both are role/CV-specific; caching
-  // them is a spec bug. Flagged in the phase-0 report. Left as spec-literal.
+  // Cache only the companyBrief — hiringManager and linkedInMessage are
+  // role- and CV-specific, so we regenerate them on every research call.
+  // On hit: keep making the Anthropic call, but suppress web_search and
+  // pass the cached brief via a system prompt so the model focuses on the
+  // applicant-specific fields. The server then splices the cached brief
+  // back into the JSON (see the post-response merge below) so the model
+  // can't paraphrase it.
   const isResearchCall = hasWebSearch || callKind === "research";
   let cacheHit = false;
+  let cachedBrief: string | null = null;
   if (isResearchCall && companyName) {
     const key = normaliseCompanyKey(companyName);
     if (key) {
       const hit = await readCompanyResearch(key);
-      if (hit) {
+      const brief = hit && typeof (hit.research as Record<string, unknown> | undefined)?.companyBrief === "string"
+        ? ((hit.research as { companyBrief: string }).companyBrief)
+        : null;
+      if (brief && brief.length > 0) {
         cacheHit = true;
-        // Fire-and-forget lazy purge of expired rows (at most once per isolate).
+        cachedBrief = brief;
         schedulePurge();
-        // Cost = 0, but usage_counters.calls still increments (spec §6).
-        const usage = { input_tokens: 0, output_tokens: 0, cache_read_tokens: 0,
-                        cache_write_tokens: 0, web_searches: 0, cost_usd: 0,
-                        kind: "research", model: "cache" };
-        await recordCall({
-          session_key, batch_id: batchId, usage,
-          is_tailoring_start: false, research_cache_hit: true,
-        });
-        const payload = synthesizeCacheHitResponse(hit.research);
-        const headers: Record<string, string> = {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        };
-        if (batchId) headers["x-batch-id"] = batchId;
-        if (issueNewSession) headers["x-session-token"] = await issueSessionToken(ip);
-        return new Response(JSON.stringify(payload), { status: 200, headers });
+        // Suppress web_search — the model would otherwise re-research the
+        // company we've already cached. hiringManager falls back to
+        // JD-inferred (title only, null name, low confidence) — an
+        // acknowledged trade-off vs. paying $0.02–$0.05 per hit.
+        safeTools = undefined;
       }
     }
   }
@@ -473,6 +469,9 @@ serve(async (req) => {
     messages: finalMessages,
   };
   if (safeTools) upstreamPayload.tools = safeTools;
+  if (cacheHit && cachedBrief) {
+    upstreamPayload.system = cachedBriefSystemPrompt(cachedBrief);
+  }
 
   // ---- Anthropic call ----------------------------------------------------
   let anthropicRes: Response;
@@ -492,9 +491,42 @@ serve(async (req) => {
     return jsonError(502, "Upstream network error", corsHeaders);
   }
 
-  const responseBody = await anthropicRes.text();
+  let responseBody = await anthropicRes.text();
   let parsedResponse: Record<string, unknown> | null = null;
   try { parsedResponse = JSON.parse(responseBody); } catch { /* keep null */ }
+
+  // ---- Splice cached brief into response (cache hit only) ----------------
+  // The system prompt tells the model to omit companyBrief and skip web
+  // research, but that's steering, not a guarantee. Overwrite the field
+  // server-side so the client always sees the cached brief verbatim.
+  if (cacheHit && cachedBrief && anthropicRes.ok && parsedResponse) {
+    const blocks = Array.isArray((parsedResponse as { content?: unknown }).content)
+      ? (parsedResponse as { content: Array<{ type?: string; text?: string }> }).content
+      : [];
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const b = blocks[i];
+      if (b?.type === "text" && typeof b.text === "string") {
+        try {
+          const cleaned = b.text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+          const s = cleaned.indexOf("{");
+          const e = cleaned.lastIndexOf("}");
+          if (s !== -1 && e > s) {
+            const obj = JSON.parse(cleaned.slice(s, e + 1)) as Record<string, unknown>;
+            obj.companyBrief = cachedBrief;
+            if (typeof obj.linkedInMessage === "string" && typeof obj.linkedInCharCount !== "number") {
+              obj.linkedInCharCount = (obj.linkedInMessage as string).length;
+            }
+            b.text = JSON.stringify(obj, null, 2);
+            break;
+          }
+        } catch (err) {
+          console.error("[cache splice] failed to merge cachedBrief:", err);
+        }
+      }
+    }
+    // Re-serialise so the client sees the spliced text block.
+    responseBody = JSON.stringify(parsedResponse);
+  }
 
   // ---- Cost capture & telemetry (fail-open) ------------------------------
   if (anthropicRes.ok && parsedResponse) {
@@ -513,31 +545,37 @@ serve(async (req) => {
       batch_id: batchId,
       usage: callRecord,
       is_tailoring_start: isTailoringStart,
+      research_cache_hit: cacheHit,
     });
 
     // ---- Company research cache write on miss --------------------------
+    // Store ONLY companyBrief — hiringManager / linkedInMessage are
+    // regenerated on every future call to keep them role/CV-specific.
     if (isResearchCall && !cacheHit && companyName) {
       const key = normaliseCompanyKey(companyName);
       if (key) {
-        // Extract the JSON payload from the last text block.
         const blocks = Array.isArray((parsedResponse as { content?: unknown }).content)
           ? (parsedResponse as { content: Array<{ type?: string; text?: string }> }).content
           : [];
         const textBlocks = blocks.filter((b) => b?.type === "text" && typeof b.text === "string");
         const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text ?? "" : "";
         try {
-          // Loose JSON extract (fenced or not).
           const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
           const s = cleaned.indexOf("{");
           const e = cleaned.lastIndexOf("}");
           if (s !== -1 && e > s) {
             const research = JSON.parse(cleaned.slice(s, e + 1));
-            await writeCompanyResearch({
-              company_key:   key,
-              company_name:  companyName.trim(),
-              research,
-              searches_used: usage.web_searches,
-            });
+            const brief = typeof research.companyBrief === "string" ? research.companyBrief.trim() : "";
+            if (brief.length > 0) {
+              await writeCompanyResearch({
+                company_key:   key,
+                company_name:  companyName.trim(),
+                companyBrief:  brief,
+                searches_used: usage.web_searches,
+              });
+            } else {
+              console.warn("[cache write] research response had no companyBrief; skipping cache write");
+            }
           }
         } catch (err) {
           console.error("[cache write] failed to parse research JSON:", err);

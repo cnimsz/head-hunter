@@ -12,7 +12,11 @@ import { getServiceClient } from "./db.ts";
 
 const CACHE_TTL_MS = 30_000; // 30s
 
-let cached: { value: number; expiresAt: number } | null = null;
+// value = null means "unknown" (unseeded ledger or transient error). The
+// edge function treats null as "don't block". Number(null) is 0 in JS, so
+// coercing eagerly would fire 503 NO_CAPACITY on an unseeded ledger — bug
+// that hit prod once already.
+let cached: { value: number | null; expiresAt: number } | null = null;
 
 export async function getBalanceUsd(): Promise<number | null> {
   const now = Date.now();
@@ -22,9 +26,15 @@ export async function getBalanceUsd(): Promise<number | null> {
     const { data, error } = await supa.rpc("get_balance_usd");
     if (error) {
       console.error("[balance] get_balance_usd failed:", error);
+      return null; // don't cache — retry on next request
+    }
+    // SQL NULL (no top-ups seeded) → JS null. Do NOT coerce to Number.
+    if (data === null || data === undefined) {
+      cached = { value: null, expiresAt: now + CACHE_TTL_MS };
       return null;
     }
-    const val = Number(data);
+    // PostgREST can return numeric as string when precision is high; handle both.
+    const val = typeof data === "number" ? data : Number(data);
     if (!Number.isFinite(val)) {
       console.error("[balance] get_balance_usd returned non-finite:", data);
       return null;
