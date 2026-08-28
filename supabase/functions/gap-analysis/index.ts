@@ -7,6 +7,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { recordAnthropicUsage, userSessionKey } from "../_shared/cost.ts";
 
 const ALLOWED_ORIGINS = [
   "https://head-hunter-fawn.vercel.app",
@@ -231,6 +232,14 @@ serve(async (req) => {
     }
 
     const data = await res.json();
+    // Record cost to usage_counters BEFORE any subsequent validation so the
+    // ledger reflects reality even if we later fail to parse the response.
+    // Fail-open — never throws.
+    await recordAnthropicUsage({
+      session_key: userSessionKey(userId),
+      model: MODEL,
+      usage: data?.usage,
+    });
     const blocks = Array.isArray(data?.content) ? data.content : [];
     // With web_search the response is a mix of tool_use / tool_result / text
     // blocks. The model's final answer is the LAST text block.

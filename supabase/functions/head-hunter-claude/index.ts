@@ -17,7 +17,7 @@
 // model allow-list, max_tokens cap, body size cap, tool allow-list.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { computeCostUsd } from "./pricing.ts";
+import { computeCostUsd } from "../_shared/pricing.ts";
 import { normaliseCompanyKey } from "./company_key.ts";
 import { deriveSessionKey } from "./session_key.ts";
 import {
@@ -214,19 +214,23 @@ function nextUtcMidnightIso(): string {
 }
 
 // System-prompt directive injected on a research cache hit — tells the model
-// to skip company research and focus on the applicant-specific fields. The
-// server splices the cached brief back into the JSON after the model returns,
-// so any paraphrase the model produces is overwritten.
+// to skip company research (brief is cached) but use its limited web_search
+// budget for hiring-manager verification only. The server splices the cached
+// brief back into the JSON after the model returns, so any paraphrase the
+// model produces is overwritten.
 function cachedBriefSystemPrompt(cachedBrief: string): string {
   return [
     "The company research has already been completed for a previous applicant.",
     "A pre-written companyBrief is provided in the <cached_company_brief> tag below.",
     "The server will attach this brief to your JSON response automatically —",
     "you MUST NOT include a `companyBrief` field in your output, and you MUST",
-    "NOT attempt to research the company or use any web tools. Focus entirely",
-    "on the applicant-specific fields for THIS job description and CV:",
-    "  - hiringManager (identify from the JD; infer title/rationale — a null",
-    "    name and low confidence are acceptable when no LinkedIn URL is verified)",
+    "NOT use web_search to research the company (its brief is already known).",
+    "",
+    "You MAY use web_search (limited budget) SOLELY to verify the hiring",
+    "manager on LinkedIn for this specific JD role. Focus entirely on the",
+    "applicant-specific fields for THIS job description and CV:",
+    "  - hiringManager (verify the person on LinkedIn if searches are available;",
+    "    null name + low confidence acceptable when no URL is found)",
     "  - linkedInMessage",
     "  - linkedInCharCount",
     "",
@@ -235,6 +239,11 @@ function cachedBriefSystemPrompt(cachedBrief: string): string {
     "</cached_company_brief>",
   ].join("\n");
 }
+
+// On a research cache hit, web_search stays enabled but with a small budget
+// intended for hiring-manager verification only (not company research). The
+// tool clamp below rewrites the client-requested max_uses down to this value.
+const CACHE_HIT_WEB_SEARCH_MAX_USES = 2;
 
 // ---------------------------------------------------------------------------
 // Main handler
@@ -436,11 +445,20 @@ serve(async (req) => {
         cacheHit = true;
         cachedBrief = brief;
         schedulePurge();
-        // Suppress web_search — the model would otherwise re-research the
-        // company we've already cached. hiringManager falls back to
-        // JD-inferred (title only, null name, low confidence) — an
-        // acknowledged trade-off vs. paying $0.02–$0.05 per hit.
-        safeTools = undefined;
+        // Keep web_search enabled but clamp to a small budget so the model
+        // can verify the hiring manager on LinkedIn without re-researching
+        // the company. System prompt (above) tells it explicitly not to
+        // search for company info.
+        if (Array.isArray(safeTools)) {
+          safeTools = (safeTools as Array<Record<string, unknown>>).map((t) =>
+            t?.type === "web_search_20250305"
+              ? { ...t, max_uses: Math.min(
+                  typeof t.max_uses === "number" ? t.max_uses : CACHE_HIT_WEB_SEARCH_MAX_USES,
+                  CACHE_HIT_WEB_SEARCH_MAX_USES,
+                ) }
+              : t,
+          );
+        }
       }
     }
   }

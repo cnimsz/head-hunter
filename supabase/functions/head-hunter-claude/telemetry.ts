@@ -3,7 +3,7 @@
 // failure must not break a tailoring request.
 
 import { getServiceClient } from "./db.ts";
-import type { ComputedUsage } from "./pricing.ts";
+import type { ComputedUsage } from "../_shared/pricing.ts";
 
 export interface CallRecord extends ComputedUsage {
   kind: string;    // 'cv' | 'research' | 'coverLetter'

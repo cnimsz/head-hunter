@@ -15,6 +15,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { recordAnthropicUsage, userSessionKey } from "../_shared/cost.ts";
 
 // The supabase-js generics are awkward to thread through helper signatures
 // (createClient defaults the schema to "public" but the helper signatures
@@ -558,6 +559,7 @@ interface WhyChosenInput {
 async function generateWhyChosenLines(
   input: WhyChosenInput,
   anthropicKey: string,
+  userId: string,
 ): Promise<string[]> {
   if (!input.picks.length) return [];
   const picksBlock = input.picks
@@ -616,6 +618,13 @@ Example:
     return input.picks.map(() => "");
   }
   const data = await res.json();
+  // Record cost to usage_counters so this call shows up in the shared
+  // ledger consumed by get_balance_usd(). Fail-open — never throws.
+  await recordAnthropicUsage({
+    session_key: userSessionKey(userId),
+    model: MODEL,
+    usage: data?.usage,
+  });
   const blocks = Array.isArray(data?.content) ? data.content : [];
   const text = blocks
     .filter((b: { type?: string }) => b?.type === "text")
@@ -836,6 +845,7 @@ async function refreshPool({
       signalsSummary: summarizeSignals(signals),
     },
     anthropicKey,
+    userId,
   );
 
   const inserts = live.map((p, i) => ({
