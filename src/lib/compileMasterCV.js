@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import mammoth from 'mammoth';
 import { buildMasterCVPrompt } from '../prompts/master-cv.js';
-import { MODEL, MAX_TOKENS, EDGE_FN_URL } from './claude.js';
+import { callClaude } from './claude.js';
 
 const MAX_CVS = 100;
 const SUPPORTED = ['.pdf', '.docx', '.txt', '.md'];
@@ -68,38 +68,17 @@ export async function extractCVsFromZip(zipFile, onProgress = () => {}) {
 
 export async function compileMasterCV({ cvs, turnstileToken }) {
   if (!turnstileToken) throw new Error('Bot challenge required. Solve the challenge and retry.');
-  if (!EDGE_FN_URL) {
-    throw new Error(
-      'VITE_SUPABASE_URL is not configured. Set it in .env.local (dev) and Vercel env (prod).'
-    );
-  }
 
   const prompt = buildMasterCVPrompt({ cvs });
 
-  const res = await fetch(EDGE_FN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'cf-turnstile-token': turnstileToken
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: 'user', content: prompt }]
-    })
+  // Route through callClaude so this call carries x-call-kind: masterCV.
+  // The edge function uses that to keep it out of the daily tailoring cap
+  // (SINGLE_CALL_KINDS in supabase/functions/head-hunter-claude/index.ts).
+  const { text } = await callClaude({
+    prompt,
+    turnstileToken,
+    callKind: 'masterCV',
   });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    if (res.status === 401) throw new Error('Bot challenge failed. Refresh and retry.');
-    if (res.status === 429) throw new Error('Rate limit reached. Wait a minute and retry.');
-    if (res.status === 413) throw new Error('Your CV collection is too large. Try fewer CVs.');
-    throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const text = data?.content?.[0]?.text;
-  if (!text) throw new Error('Malformed response from Claude (no text content).');
   return text.trim();
 }
 

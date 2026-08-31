@@ -9,7 +9,7 @@ function extractJson(text) {
 
 export async function analyseRevisions({ originals, revised, turnstileToken }) {
   const prompt = buildFeedbackPrompt({ originals, revised });
-  const { text } = await callClaude({ prompt, turnstileToken });
+  const { text } = await callClaude({ prompt, turnstileToken, callKind: 'feedback' });
   try {
     return extractJson(text);
   } catch {

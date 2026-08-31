@@ -17,7 +17,7 @@
 // model allow-list, max_tokens cap, body size cap, tool allow-list.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { computeCostUsd } from "../_shared/pricing.ts";
+import { computeCostUsd, MODEL_PRICING } from "../_shared/pricing.ts";
 import { normaliseCompanyKey } from "./company_key.ts";
 import { deriveSessionKey } from "./session_key.ts";
 import {
@@ -50,8 +50,26 @@ const ALLOWED_MODELS = new Set([
   "claude-opus-4-7",
 ]);
 
+// Startup guard: every allowed model MUST have a pricing entry. Otherwise a
+// call to that model records $0 (pricing.ts:71 unknown-model branch), and
+// real spend silently drifts above tracked spend. Refuse to serve instead.
+for (const m of ALLOWED_MODELS) {
+  if (!MODEL_PRICING[m]) {
+    throw new Error(
+      `[startup] Model "${m}" is in ALLOWED_MODELS but has no MODEL_PRICING entry — refusing to start.`,
+    );
+  }
+}
+
 const ALLOWED_TOOL_TYPES = new Set(["web_search_20250305"]);
-const ALLOWED_CALL_KINDS = new Set(["cv", "research", "coverLetter"]);
+const ALLOWED_CALL_KINDS = new Set([
+  "cv", "research", "coverLetter",  // three-call tailoring pipeline
+  "feedback", "masterCV",           // single-call flows — see SINGLE_CALL_KINDS
+]);
+// Single-call flows: they burn balance but must NOT count against the daily
+// tailoring cap (which is per-tailoring-start, not per-Anthropic-call), and
+// must NOT open a generation_batches row (which is per-tailoring pipeline).
+const SINGLE_CALL_KINDS = new Set(["feedback", "masterCV"]);
 
 const MAX_TOOLS = 4;
 const MAX_TOOL_USES = 10;
@@ -302,7 +320,10 @@ serve(async (req) => {
   // ---- Daily cap on new tailorings (call 1 = Turnstile) -------------------
   // The cap is per session_key per UTC day. Fail-open on DB error.
   let batchId: string | null = null;
-  const isTailoringStart = issueNewSession; // Turnstile = new batch
+  // Turnstile = new pipeline start, EXCEPT for the single-call flows
+  // (feedback, masterCV) which also present Turnstile but aren't a tailoring.
+  const isTailoringStart =
+    issueNewSession && !(callKind && SINGLE_CALL_KINDS.has(callKind));
 
   if (isTailoringStart) {
     const cap = await checkDailyCap(session_key, DAILY_CALL_LIMIT);
@@ -547,12 +568,26 @@ serve(async (req) => {
   }
 
   // ---- Cost capture & telemetry (fail-open) ------------------------------
-  if (anthropicRes.ok && parsedResponse) {
-    const usageBlock = (parsedResponse as { usage?: unknown }).usage as
-      Parameters<typeof computeCostUsd>[1];
-    const usage = computeCostUsd(model, usageBlock);
+  // Cost capture runs on anthropicRes.ok alone — a 200 with an unparseable
+  // body still means Anthropic billed us, so we must not skip the record.
+  // Mirrors the pattern in gap-analysis/index.ts (record before parse).
+  let usage: ReturnType<typeof computeCostUsd> | null = null;
+  if (anthropicRes.ok) {
+    const usageBlock = parsedResponse
+      ? ((parsedResponse as { usage?: unknown }).usage as
+          Parameters<typeof computeCostUsd>[1])
+      : undefined;
+    if (!parsedResponse) {
+      console.error(
+        "[cost] 200 OK but unparseable body — Anthropic billed, usage lost. Recording zeros.",
+        responseBody.slice(0, 300),
+      );
+    }
+    usage = computeCostUsd(model, usageBlock);
     const callRecord = {
-      kind: callKind ?? (hasWebSearch ? "research" : (issueNewSession ? "cv" : "unknown")),
+      kind: parsedResponse
+        ? (callKind ?? (hasWebSearch ? "research" : (issueNewSession ? "cv" : "unknown")))
+        : "unparseable",
       model,
       ...usage,
     };
@@ -565,7 +600,10 @@ serve(async (req) => {
       is_tailoring_start: isTailoringStart,
       research_cache_hit: cacheHit,
     });
+  }
 
+  // ---- Post-response side effects (require a parsed body) ----------------
+  if (anthropicRes.ok && parsedResponse && usage) {
     // ---- Company research cache write on miss --------------------------
     // Store ONLY companyBrief — hiringManager / linkedInMessage are
     // regenerated on every future call to keep them role/CV-specific.

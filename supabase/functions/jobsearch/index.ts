@@ -16,6 +16,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { recordAnthropicUsage, userSessionKey } from "../_shared/cost.ts";
+import { MODEL_PRICING } from "../_shared/pricing.ts";
 
 // The supabase-js generics are awkward to thread through helper signatures
 // (createClient defaults the schema to "public" but the helper signatures
@@ -32,6 +33,14 @@ const ALLOWED_ORIGINS = [
 
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 1200;
+
+// Startup guard: MODEL must have a pricing entry. Without it cost silently
+// records as $0 (pricing.ts:71 unknown-model branch). Refuse to serve instead.
+if (!MODEL_PRICING[MODEL]) {
+  throw new Error(
+    `[startup] MODEL "${MODEL}" has no MODEL_PRICING entry — refusing to start.`,
+  );
+}
 const MAX_BODY_BYTES = 200_000;
 const TARGET_ACTIVE = 3;
 const RATE_LIMIT_MAX = 12;
