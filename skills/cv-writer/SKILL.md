@@ -33,7 +33,7 @@ Recruiters spend 6 seconds on initial CV scan. Structure content so the most imp
 - Clear visual hierarchy
 
 ### Less Is More
-- Maximum 2 pages, always
+- Page target scales with experience: 1 page per 10 years, rounded up, hard ceiling of 3 pages
 - Cut ruthlessly — if it doesn't directly support the target role, remove it
 - One strong bullet beats three weak ones
 - White space is your friend

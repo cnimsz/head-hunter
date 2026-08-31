@@ -30,7 +30,7 @@ Recruiters spend 6 seconds on initial CV scan. Structure content so the most imp
 - Clear visual hierarchy
 
 ### Less Is More
-- Maximum 2 pages, always
+- Page target scales with experience: **1 page per 10 years of experience, rounded up, hard ceiling of 3 pages** (see LENGTH ENFORCEMENT below)
 - Cut ruthlessly — if it doesn't directly support the target role, remove it
 - One strong bullet beats three weak ones
 - White space is your friend
@@ -105,14 +105,35 @@ For C-suite/VP roles:
 
 ## LENGTH ENFORCEMENT (NON-NEGOTIABLE)
 
-- Maximum 2 pages. If over, CUT content — never reduce font size.
-- **Total roles included: MAXIMUM 5.** If the master CV has more, keep the 5 most recent/relevant and compress the rest into a single "Earlier roles" entry (company list, no bullets).
-- **Total bullets across ALL roles combined: MAXIMUM 14.** Distribute across the 5 roles — recent roles get more (3-4), older get fewer (1-2). If you exceed 14, cut the weakest bullets first.
-- Professional Summary: MAXIMUM 3 sentences. Never a paragraph.
+### Page target: 1 page per 10 years of experience (rounded up, hard ceiling 3)
+
+**Before writing, calculate YoE.** Find the earliest role start date in the master CV and count full years to today. Then read the target from this table and stick to it:
+
+| Years of Experience | Target Pages | MAX Roles | MAX Total Bullets |
+|--------------------:|:------------:|:---------:|:-----------------:|
+|             ≤ 10    |     1        |    3      |         8         |
+|          11 – 20    |     2        |    4      |        12         |
+|          21 – 30    |     3        |    5      |        15         |
+|             > 30    |     3        |    5      |        15         |
+
+**Hard ceiling: never exceed 3 pages.** If over target, CUT content — never shrink font, margins, or line spacing.
+
+### Compression rules (apply IN ORDER when trimming)
+1. **Bullet length: MAXIMUM 22 words per bullet, aim for 12–18.** If any bullet exceeds 22 words, rewrite it — no exceptions.
+2. Strip filler: cut "in order to", "responsible for", "successfully", "instrumental in", "helped to", "worked on", "tasked with". Drop articles ("a", "the") where the sentence still reads.
+3. Merge overlapping bullets: two thin bullets on the same theme → one strong bullet.
+4. Trim older roles first: reduce their bullets before touching the top 2 roles.
+5. Compress roles older than 15 years into ONE "Earlier roles" entry (company list, no bullets) — unless directly relevant to the target role.
+
+### Other section caps (apply at EVERY page target)
+- Professional Summary: MAXIMUM 3 sentences AND ≤ 55 words total. Never a paragraph.
+- Skills: MAXIMUM 3 lines total. One category per line, comma-separated keywords only (no descriptions, no prose).
+- Education: 1-2 lines total.
 - NO "Track Record" or "Quantified Achievements" section — achievements go in Experience bullets.
-- Experience bullets per role: MAXIMUM 3-4 (recent), 1-2 (older). Never 5+.
-- Skills section: MAXIMUM 3 lines total. One category per line, comma-separated keywords only (no descriptions, no prose).
-- Remove anything older than 15 years unless directly relevant.
+- Experience bullets per role: at 3-page target, MAX 4 recent / 2 older. At 2-page target, MAX 3 recent / 1-2 older. At 1-page target, MAX 3 recent / 1 older.
+
+### Self-check BEFORE emitting JSON
+Count your bullets and words. If total bullets > cap OR any bullet > 22 words OR summary > 55 words, revise until compliant. Do not emit a CV that violates these caps.
 
 ### Skills Formatting (STRICT)
 Each skills line is: "Category: keyword, keyword, keyword, keyword"
@@ -145,7 +166,7 @@ Venture Building: Hypothesis validation, customer discovery, product-market fit,
 
 ## Your Task
 
-Using the Master CV below, create a tailored 2-page CV for the job description provided.
+Using the Master CV below, create a tailored CV for the job description provided. **First**, compute the candidate's YoE from the master CV and read the page/role/bullet caps from the LENGTH ENFORCEMENT table. **Then** write to those caps.
 
 ### Job Description:
 ${jobDescription}
@@ -193,11 +214,11 @@ Return a single JSON object with this exact structure. No text before or after t
 }
 
 RULES:
-- experience: MAXIMUM 5 entries total. If the master CV has more, keep the 5 most recent/relevant; compress the rest into ONE final entry with company "Earlier roles", an empty bullets array, and a titleLine listing the older companies (e.g., "Company A · Company B · Company C | 2005 – 2014").
-- experience[].bullets: 3-4 items for recent roles, 1-2 for older. ABSOLUTE TOTAL bullets across all roles ≤ 14.
+- experience: entry count follows the YoE table in LENGTH ENFORCEMENT (3/4/5 max). If the master CV has more roles than the cap, keep the most recent/relevant; compress the rest into ONE final entry with company "Earlier roles", an empty bullets array, and a titleLine listing the older companies (e.g., "Company A · Company B · Company C | 2005 – 2014").
+- experience[].bullets: distribution per LENGTH ENFORCEMENT, and TOTAL bullets across all roles ≤ the cap for the chosen page target (8 / 12 / 15). Every bullet ≤ 22 words.
 - skills: maximum 3 entries, each is "Category: keyword, keyword, ..."
 - education: 1-2 entries
-- summary: 2-3 sentences, no more
+- summary: 2-3 sentences AND ≤ 55 words
 - "title" at the top level is a short professional subline (e.g. "Chief Operating Officer · Chief Strategy Officer"). Include it if the master CV supports a clear senior target role ladder; otherwise omit.
 - For each experience entry, populate BOTH the atomic fields (title, location, startDate, endDate) AND the legacy "titleLine" string so older renderers still work. "titleLine" should read "Title | Location | StartDate - EndDate" (plain hyphen, no en/em-dash). Use "Present" as endDate when the role is current.
 - certifications, publicSpeaking, startupAchievements are OPTIONAL arrays. Only include a field if the master CV clearly contains that type of content. Omit the key entirely if there is nothing to list — do not emit empty arrays.
