@@ -3,10 +3,12 @@ import InputPanel from './components/InputPanel.jsx';
 import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobSearchPanel from './components/JobSearchPanel.jsx';
+import WaitlistPanel from './components/WaitlistPanel.jsx';
 import { getTheme, saveTheme, getMasterCV } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase.js';
+import { fetchCapacityBand, setEmptyFromProxy } from './lib/capacity.js';
 
 export default function App() {
   const [theme, setTheme] = useState(getTheme());
@@ -18,6 +20,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState('idle');
   const [lastInputs, setLastInputs] = useState({ companyName: '', jobDescription: '' });
+  const [capacity, setCapacity] = useState(null); // { band, runwayBucket } | null
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -29,6 +32,14 @@ export default function App() {
   // isn't mounted yet. No-op when Supabase env vars aren't configured.
   useEffect(() => {
     getSupabaseClient();
+  }, []);
+
+  // Initial capacity poll. If the balance is already empty, the tool is
+  // suspended and the waitlist replaces it (spec §6). Otherwise the band
+  // is null until amber/red/green is known — the indicator won't render
+  // until then, which is fine (indicator is post-tailoring only per §4).
+  useEffect(() => {
+    fetchCapacityBand().then((c) => c && setCapacity(c));
   }, []);
 
   async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken, atsSystem }) {
@@ -48,8 +59,18 @@ export default function App() {
       });
       setResult(out);
       setCurrentStep('done');
+      // Balance just dropped; re-poll so the indicator reflects post-call state.
+      fetchCapacityBand().then((c) => c && setCapacity(c));
     } catch (e) {
-      setError(e.message || String(e));
+      const msg = e.message || String(e);
+      // Proxy returned 503 NO_CAPACITY between polls. Skip the waitlist
+      // wait — flip UI immediately.
+      if (msg === 'NO_CAPACITY') {
+        setCapacity(setEmptyFromProxy());
+        setError(null);
+      } else {
+        setError(msg);
+      }
       setCurrentStep('idle');
     } finally {
       setIsGenerating(false);
@@ -92,28 +113,35 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 max-w-7xl mx-auto">
-        <InputPanel
-          onGenerate={handleGenerate}
-          isGenerating={isGenerating}
-          currentStep={currentStep}
-          onFindRoles={
-            isSupabaseConfigured()
-              ? (currentJD) => {
-                  setJobSearchSeedJD(currentJD || '');
-                  setJobSearchOpen(true);
-                }
-              : null
-          }
-        />
-        <OutputPanel
-          result={result}
-          error={error}
-          companyName={lastInputs.companyName}
-          jobDescription={lastInputs.jobDescription}
-          onRetailor={handleRetailorAfterGap}
-        />
-      </main>
+      {capacity?.band === 'empty' ? (
+        <main className="p-4 max-w-7xl mx-auto">
+          <WaitlistPanel />
+        </main>
+      ) : (
+        <main className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 max-w-7xl mx-auto">
+          <InputPanel
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
+            currentStep={currentStep}
+            onFindRoles={
+              isSupabaseConfigured()
+                ? (currentJD) => {
+                    setJobSearchSeedJD(currentJD || '');
+                    setJobSearchOpen(true);
+                  }
+                : null
+            }
+          />
+          <OutputPanel
+            result={result}
+            error={error}
+            companyName={lastInputs.companyName}
+            jobDescription={lastInputs.jobDescription}
+            onRetailor={handleRetailorAfterGap}
+            capacity={capacity}
+          />
+        </main>
+      )}
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {jobSearchOpen && (
