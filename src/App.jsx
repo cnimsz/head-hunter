@@ -4,6 +4,7 @@ import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobSearchPanel from './components/JobSearchPanel.jsx';
 import WaitlistPanel from './components/WaitlistPanel.jsx';
+import CapacityIndicator from './components/CapacityIndicator.jsx';
 import { getTheme, saveTheme, getMasterCV } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
@@ -20,7 +21,13 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState('idle');
   const [lastInputs, setLastInputs] = useState({ companyName: '', jobDescription: '' });
-  const [capacity, setCapacity] = useState(null); // { band, runwayBucket } | null
+  // Three-value capacity state (per capacity-indicator-banner-spec.md):
+  //   undefined  = initial load, RPC in flight (banner shows nothing)
+  //   null       = RPC failed or returned null (banner shows 'unknown')
+  //   { band, runwayBucket } = success
+  // Do NOT collapse null and undefined — the banner would flash unknown
+  // copy on every page load.
+  const [capacity, setCapacity] = useState(undefined);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -34,12 +41,10 @@ export default function App() {
     getSupabaseClient();
   }, []);
 
-  // Initial capacity poll. If the balance is already empty, the tool is
-  // suspended and the waitlist replaces it (spec §6). Otherwise the band
-  // is null until amber/red/green is known — the indicator won't render
-  // until then, which is fine (indicator is post-tailoring only per §4).
+  // Initial capacity poll. Distinguish RPC failure (null → unknown) from
+  // in-flight (undefined → loading). Do not swallow nulls.
   useEffect(() => {
-    fetchCapacityBand().then((c) => c && setCapacity(c));
+    fetchCapacityBand().then((c) => setCapacity(c ?? null));
   }, []);
 
   async function handleGenerate({ jobDescription, cvText, companyName, turnstileToken, atsSystem }) {
@@ -60,7 +65,7 @@ export default function App() {
       setResult(out);
       setCurrentStep('done');
       // Balance just dropped; re-poll so the indicator reflects post-call state.
-      fetchCapacityBand().then((c) => c && setCapacity(c));
+      fetchCapacityBand().then((c) => setCapacity(c ?? null));
     } catch (e) {
       const msg = e.message || String(e);
       // Proxy returned 503 NO_CAPACITY between polls. Skip the waitlist
@@ -93,6 +98,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
+      <CapacityIndicator capacity={capacity} />
       <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">CV Toolkit</h1>
         <div className="flex items-center gap-2">
@@ -138,7 +144,6 @@ export default function App() {
             companyName={lastInputs.companyName}
             jobDescription={lastInputs.jobDescription}
             onRetailor={handleRetailorAfterGap}
-            capacity={capacity}
           />
         </main>
       )}

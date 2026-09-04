@@ -4,7 +4,6 @@ import FeedbackModal from './FeedbackModal.jsx';
 import EditableCV from './EditableCV.jsx';
 import EditableCoverLetter from './EditableCoverLetter.jsx';
 import GapAnalysisPanel from './GapAnalysisPanel.jsx';
-import CapacityIndicator from './CapacityIndicator.jsx';
 
 const TABS = [
   { id: 'cv', label: 'CV' },
@@ -28,7 +27,7 @@ function readTemplate() {
   return 'classic';
 }
 
-export default function OutputPanel({ result, error, companyName, jobDescription, onRetailor, capacity }) {
+export default function OutputPanel({ result, error, companyName, jobDescription, onRetailor }) {
   const [tab, setTab] = useState('cv');
   const [copied, setCopied] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -247,10 +246,6 @@ export default function OutputPanel({ result, error, companyName, jobDescription
             </span>
           )}
         </div>
-      )}
-
-      {result && capacity && (
-        <CapacityIndicator band={capacity.band} runwayBucket={capacity.runwayBucket} />
       )}
 
       {feedbackOpen && result && (
