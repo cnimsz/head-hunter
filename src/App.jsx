@@ -98,10 +98,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
-      <CapacityIndicator capacity={capacity} />
-      <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">CV Toolkit</h1>
-        <div className="flex items-center gap-2">
+      <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+        <h1 className="text-lg font-semibold shrink-0">CV Toolkit</h1>
+        <div className="flex-1 flex justify-center min-w-0">
+          <CapacityIndicator capacity={capacity} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="px-2 py-1 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-800"

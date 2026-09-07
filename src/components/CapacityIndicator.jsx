@@ -30,69 +30,66 @@ function writeImpressionSet(set) {
   }
 }
 
-// Runway bucket text comes verbatim from the RPC (spec resolution 3). Do not
-// parse a number out of it — the underlying estimate is not precise enough.
+// Runway bucket text comes verbatim from the RPC (do not parse a number
+// out of it — the underlying estimate is not precise enough). Copy trimmed
+// for compact inline placement in the header row.
 function copyFor(band, runwayBucket) {
   switch (band) {
     case 'green':
-      return 'Free, funded by donations.';
+      return 'Free — funded by donations';
     case 'amber':
-      return `Credits running low — about ${runwayBucket || 'a few weeks'} left at current use.`;
+      return `Credits running low · ${runwayBucket || 'a few weeks'} left`;
     case 'red':
-      return 'Under a week of credits left.';
+      return 'Under a week of credits left';
     case 'empty':
-      return 'Out of credits. Tailoring is paused until donations refill it.';
+      return 'Out of credits — tailoring paused';
     case 'unknown':
     default:
-      return "Can't check credit balance right now.";
+      return "Can't check credit balance right now";
   }
 }
 
-// State is carried by a 3px left rule + text colour + progressively stronger
-// tint (spec §Visual). Never a saturated wash. Never colour alone — copy is
-// distinct across bands.
+// Bubble tint per state. All states get a visible pill (the whole point of
+// the header treatment is that donations always stand out); escalation is
+// carried by tint strength + border colour + text weight.
 function toneClasses(band) {
   switch (band) {
     case 'amber':
       return {
-        // Very light amber tint over the canvas; slightly stronger in dark.
-        bg: 'bg-amber-500/5 dark:bg-amber-500/10',
-        rule: 'border-l-amber-500',
+        bg: 'bg-amber-100 dark:bg-amber-500/25',
+        border: 'border-amber-400 dark:border-amber-500',
         text: 'text-amber-900 dark:text-amber-100'
       };
     case 'red':
       return {
-        bg: 'bg-red-500/5 dark:bg-red-500/15',
-        rule: 'border-l-red-500',
+        bg: 'bg-red-100 dark:bg-red-500/30',
+        border: 'border-red-400 dark:border-red-500',
         text: 'text-red-900 dark:text-red-100'
       };
     case 'empty':
       return {
-        // Most tint of the escalation ladder.
-        bg: 'bg-red-500/10 dark:bg-red-500/25',
-        rule: 'border-l-red-600',
-        text: 'text-red-900 dark:text-red-100'
+        bg: 'bg-red-200 dark:bg-red-500/50',
+        border: 'border-red-500 dark:border-red-400',
+        text: 'text-red-900 dark:text-red-50'
       };
     case 'unknown':
       return {
-        // Neutral — never claim scarcity when the read failed.
-        bg: 'bg-transparent',
-        rule: 'border-l-slate-400 dark:border-l-slate-500',
-        text: 'text-slate-600 dark:text-slate-400'
+        bg: 'bg-slate-100 dark:bg-slate-800',
+        border: 'border-slate-300 dark:border-slate-600',
+        text: 'text-slate-700 dark:text-slate-300'
       };
     case 'green':
     default:
       return {
-        // Green is quiet: no tint, muted rule, muted text.
-        bg: 'bg-transparent',
-        rule: 'border-l-slate-300 dark:border-l-slate-700',
-        text: 'text-slate-600 dark:text-slate-400'
+        bg: 'bg-emerald-50 dark:bg-emerald-500/15',
+        border: 'border-emerald-400 dark:border-emerald-500/60',
+        text: 'text-emerald-800 dark:text-emerald-100'
       };
   }
 }
 
 // Focus the WaitlistPanel input if present (empty state renders the
-// WaitlistPanel below the banner per spec resolution 1).
+// WaitlistPanel below when the tool is suspended).
 function focusWaitlistInput() {
   const el = document.getElementById('waitlist-email');
   if (el instanceof HTMLInputElement) {
@@ -101,18 +98,20 @@ function focusWaitlistInput() {
   }
 }
 
-// The banner. Rendered by App.jsx above the header (spec §Visual: full-width
-// strip above the existing header row). Always present in the DOM — green is
-// a quiet state, not an absent one (spec resolution: three-value capacity —
-// undefined = loading, null = failed, object = success).
+// Inline pill rendered inside the App header, on the same row as the title
+// and the settings widget. Always present in the DOM — green is a visible
+// (quiet) state, not an absent one.
+//   capacity === undefined → loading (invisible placeholder, preserves layout)
+//   capacity === null      → RPC failed → 'unknown' band
+//   capacity === object    → { band, runwayBucket }
 export default function CapacityIndicator({ capacity }) {
   const isLoading = capacity === undefined;
   const band = isLoading ? null : capacity === null ? 'unknown' : capacity.band;
   const runwayBucket = capacity && capacity.runwayBucket;
 
-  // Cooldown gates the CTA only, never the banner itself (spec §Behaviour).
-  // Empty ignores the cooldown — a user who can't run the tool needs the
-  // email capture path regardless of what they dismissed last week.
+  // Cooldown gates the Donate button only, never the pill itself. Empty
+  // ignores the cooldown — a user who can't run the tool needs both the
+  // Donate and Notify me CTAs regardless of what they dismissed last week.
   const [ctaDismissed, setCtaDismissed] = useState(() => isPromptOnCooldown());
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
@@ -125,8 +124,7 @@ export default function CapacityIndicator({ capacity }) {
     return () => m.removeEventListener?.('change', handler);
   }, []);
 
-  // Impressions: once per band per session. Skip loading and skip unknown
-  // (unknown is a client-side error state — nothing user-relevant to attribute).
+  // Impressions: once per band per session. Skip loading and skip unknown.
   useEffect(() => {
     if (!band || band === 'unknown') return;
     const seen = readImpressionSet();
@@ -136,8 +134,7 @@ export default function CapacityIndicator({ capacity }) {
     logEvent('capacity_impression', band);
   }, [band]);
 
-  // Cross-fade the text on band change (spec §Visual). Skip under
-  // prefers-reduced-motion. Container height is stable — only text opacity.
+  // Cross-fade the text on band change. Skip under prefers-reduced-motion.
   const [visibleBand, setVisibleBand] = useState(band);
   const [fadeIn, setFadeIn] = useState(true);
   const bandRef = useRef(band);
@@ -172,58 +169,53 @@ export default function CapacityIndicator({ capacity }) {
 
   const tone = toneClasses(visibleBand || 'green');
 
-  // Container is always in DOM at a fixed 32px height to prevent layout
-  // shifts as capacity resolves. Loading = invisible contents, same height.
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`w-full border-l-[3px] ${tone.rule} ${tone.bg} transition-colors duration-200`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold whitespace-nowrap transition-colors duration-200 ${
+        tone.bg
+      } ${tone.border} ${tone.text} ${
+        fadeIn && !isLoading ? 'opacity-100' : 'opacity-0'
+      } transition-opacity`}
     >
-      <div
-        className={`mx-auto flex h-8 max-w-7xl items-center gap-3 px-4 text-xs ${tone.text} transition-opacity duration-100 ${
-          fadeIn && !isLoading ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        {!isLoading && (
-          <>
-            <span className="flex-1 truncate">
-              {copyFor(visibleBand || 'green', runwayBucket)}
-            </span>
-            {renderCta({
-              band: visibleBand,
-              ctaDismissed,
-              onDonate: handleDonate,
-              onEmailCapture: focusWaitlistInput,
-              onDismiss: handleDismiss
-            })}
-          </>
-        )}
-      </div>
+      {!isLoading && (
+        <>
+          <span>{copyFor(visibleBand || 'green', runwayBucket)}</span>
+          {renderCta({
+            band: visibleBand,
+            ctaDismissed,
+            tone,
+            onDonate: handleDonate,
+            onEmailCapture: focusWaitlistInput,
+            onDismiss: handleDismiss
+          })}
+        </>
+      )}
     </div>
   );
 }
 
-// CTA per state. All are text buttons — no filled pills (spec §Visual).
-// Cooldown suppresses the Donate CTA for green/amber/red/unknown; empty
-// always shows both Donate and Notify me (spec §Behaviour: empty ignores
-// cooldown; needs an actionable path to refill AND a way to be notified).
+// CTA per state — text buttons, no filled sub-pills (the bubble itself is
+// the visual weight). Cooldown suppresses the Donate CTA for
+// green/amber/red/unknown; empty always shows both Donate and Notify me.
 function renderCta({ band, ctaDismissed, onDonate, onEmailCapture, onDismiss }) {
+  const link =
+    'font-bold text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300';
+
   if (band === 'empty') {
     return (
       <>
-        <button
-          type="button"
-          onClick={onDonate}
-          className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
-        >
+        <span aria-hidden="true" className="opacity-40">
+          ·
+        </span>
+        <button type="button" onClick={onDonate} className={link}>
           Donate
         </button>
-        <button
-          type="button"
-          onClick={onEmailCapture}
-          className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
-        >
+        <span aria-hidden="true" className="opacity-40">
+          ·
+        </span>
+        <button type="button" onClick={onEmailCapture} className={link}>
           Notify me
         </button>
       </>
@@ -232,22 +224,20 @@ function renderCta({ band, ctaDismissed, onDonate, onEmailCapture, onDismiss }) 
 
   if (ctaDismissed) return null;
 
-  const donateLabel = 'Donate';
   return (
     <>
-      <button
-        type="button"
-        onClick={onDonate}
-        className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
-      >
-        {donateLabel}
+      <span aria-hidden="true" className="opacity-40">
+        ·
+      </span>
+      <button type="button" onClick={onDonate} className={link}>
+        Donate
       </button>
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Hide donate prompt"
         title="Hide for 3 days"
-        className="rounded px-1 text-slate-500 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-slate-500 dark:hover:text-slate-200"
+        className="ml-0.5 rounded px-1 opacity-70 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
       >
         ✕
       </button>
