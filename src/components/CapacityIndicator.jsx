@@ -206,17 +206,27 @@ export default function CapacityIndicator({ capacity }) {
 
 // CTA per state. All are text buttons — no filled pills (spec §Visual).
 // Cooldown suppresses the Donate CTA for green/amber/red/unknown; empty
-// always shows its "Notify me" link (spec §Behaviour: empty ignores cooldown).
+// always shows both Donate and Notify me (spec §Behaviour: empty ignores
+// cooldown; needs an actionable path to refill AND a way to be notified).
 function renderCta({ band, ctaDismissed, onDonate, onEmailCapture, onDismiss }) {
   if (band === 'empty') {
     return (
-      <button
-        type="button"
-        onClick={onEmailCapture}
-        className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
-      >
-        Notify me
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={onDonate}
+          className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
+        >
+          Donate
+        </button>
+        <button
+          type="button"
+          onClick={onEmailCapture}
+          className="rounded font-medium text-blue-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300"
+        >
+          Notify me
+        </button>
+      </>
     );
   }
 
