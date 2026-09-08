@@ -4,11 +4,20 @@
 
 import { getServiceClient } from "./db.ts";
 import type { ComputedUsage } from "../_shared/pricing.ts";
+import { recordAnthropicUsage, type Operation } from "../_shared/cost.ts";
 
 export interface CallRecord extends ComputedUsage {
-  kind: string;    // 'cv' | 'research' | 'coverLetter'
+  kind: string;    // 'cv' | 'research' | 'coverLetter' | 'feedback' | 'masterCV'
   model: string;
   at?: string;
+}
+
+// Map the head-hunter-claude callKind to the usage_counters.operation value.
+// 'research' is a distinct operation because its economics (Haiku + web_search
+// per-search fees) are meaningfully different from the tailoring calls.
+// Everything else lands in the 'tailoring' bucket (the balance-and-capped one).
+function kindToOperation(kind: string): Operation {
+  return kind === "research" ? "research" : "tailoring";
 }
 
 // Check today's tailoring count against the daily cap.
@@ -21,11 +30,14 @@ export async function checkDailyCap(session_key: string, limit: number): Promise
   try {
     const supa = getServiceClient();
     const day = new Date().toISOString().slice(0, 10);
+    // Cap only counts tailoring-operation rows — gap-analysis / jobsearch /
+    // research spend against the same session_key must not consume the quota.
     const { data, error } = await supa
       .from("usage_counters")
       .select("tailorings")
       .eq("session_key", session_key)
       .eq("day", day)
+      .eq("operation", "tailoring")
       .maybeSingle();
     if (error) {
       console.error("[telemetry] checkDailyCap query failed:", error);
@@ -90,20 +102,30 @@ export async function recordCall(opts: {
   research_cache_hit?: boolean;
 }): Promise<void> {
   const { session_key, batch_id, usage, is_tailoring_start, research_cache_hit } = opts;
+  const operation = kindToOperation(usage.kind);
   try {
     const supa = getServiceClient();
 
-    const rollup = supa.rpc("record_usage", {
-      p_session_key:        session_key,
-      p_input_tokens:       usage.input_tokens,
-      p_output_tokens:      usage.output_tokens,
-      p_cache_read_tokens:  usage.cache_read_tokens,
-      p_cache_write_tokens: usage.cache_write_tokens,
-      p_web_searches:       usage.web_searches,
-      p_cost_usd:           usage.cost_usd,
-      p_is_tailoring_start: is_tailoring_start,
+    // Rollup: shared helper so operation attribution + fail-open handling
+    // stay in one place across every edge fn that calls Anthropic.
+    const rollup = recordAnthropicUsage({
+      session_key,
+      operation,
+      model: usage.model,
+      // The helper recomputes cost from raw usage; construct a RawUsage
+      // shape from our already-computed ComputedUsage so we avoid a second
+      // Anthropic-response parse. Cheap redundant math, matching totals.
+      usage: {
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        cache_read_input_tokens: usage.cache_read_tokens,
+        cache_creation_input_tokens: usage.cache_write_tokens,
+        server_tool_use: { web_search_requests: usage.web_searches },
+      },
+      is_tailoring_start,
     });
 
+    // Batch-detail write is head-hunter-claude-specific — stays inline.
     const batchWrite = batch_id
       ? supa.rpc("record_batch_call", {
           p_batch_id:            batch_id,
@@ -118,10 +140,7 @@ export async function recordCall(opts: {
         })
       : Promise.resolve({ error: null } as { error: null });
 
-    const [rRoll, rBatch] = await Promise.all([rollup, batchWrite]);
-    if ((rRoll as { error?: unknown }).error) {
-      console.error("[telemetry] record_usage failed:", (rRoll as { error?: unknown }).error);
-    }
+    const [, rBatch] = await Promise.all([rollup, batchWrite]);
     if ((rBatch as { error?: unknown }).error) {
       console.error("[telemetry] record_batch_call failed:", (rBatch as { error?: unknown }).error);
     }

@@ -34,28 +34,42 @@ export function userSessionKey(userId: string): string {
   return `user:${userId}`;
 }
 
+// Operation values recognised by usage_counters.operation (per Phase 0
+// addendum migration 20260908000000). Adding a value requires updating the
+// check constraint in that migration and any daily-cap query that filters
+// on operation.
+export type Operation = "tailoring" | "gap_analysis" | "jobsearch" | "research";
+
 // Record one Anthropic call's cost into usage_counters. Session_key is
 // opaque text — pass whatever attribution identifier the caller has.
-// Never throws. Never blocks. Set p_is_tailoring_start=false (tailoring
-// count is tracked only by head-hunter-claude, which uses its own path).
+// Operation is required — it discriminates billable-and-capped ('tailoring')
+// from billable-only ('gap_analysis' / 'jobsearch' / 'research') and is used
+// by checkDailyCap to filter the tailoring quota.
+// Never throws. Never blocks. isTailoringStart increments the tailorings
+// count on the row — only pass true from head-hunter-claude on a new
+// tailoring pipeline; every other caller passes false or omits it.
 export async function recordAnthropicUsage(opts: {
-  session_key: string;
-  model:       string;
-  usage:       RawUsage | undefined | null;
+  session_key:         string;
+  operation:           Operation;
+  model:               string;
+  usage:               RawUsage | undefined | null;
+  is_tailoring_start?: boolean;
 }): Promise<void> {
   try {
-    const { session_key, model, usage } = opts;
+    const { session_key, operation, model, usage } = opts;
+    const isTailoringStart = opts.is_tailoring_start === true;
     const c = computeCostUsd(model, usage);
     const supa = getServiceClient();
     const { error } = await supa.rpc("record_usage", {
       p_session_key:        session_key,
+      p_operation:          operation,
       p_input_tokens:       c.input_tokens,
       p_output_tokens:      c.output_tokens,
       p_cache_read_tokens:  c.cache_read_tokens,
       p_cache_write_tokens: c.cache_write_tokens,
       p_web_searches:       c.web_searches,
       p_cost_usd:           c.cost_usd,
-      p_is_tailoring_start: false,
+      p_is_tailoring_start: isTailoringStart,
     });
     if (error) console.error("[cost] record_usage failed:", error);
   } catch (e) {

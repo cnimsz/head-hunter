@@ -246,6 +246,7 @@ serve(async (req) => {
     // Fail-open — never throws.
     await recordAnthropicUsage({
       session_key: userSessionKey(userId),
+      operation: "gap_analysis",
       model: MODEL,
       usage: data?.usage,
     });

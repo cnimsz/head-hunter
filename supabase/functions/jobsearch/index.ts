@@ -631,6 +631,7 @@ Example:
   // ledger consumed by get_balance_usd(). Fail-open — never throws.
   await recordAnthropicUsage({
     session_key: userSessionKey(userId),
+    operation: "jobsearch",
     model: MODEL,
     usage: data?.usage,
   });
