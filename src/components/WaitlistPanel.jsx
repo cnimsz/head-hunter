@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase.js';
 import { logEvent } from '../lib/promptEvents.js';
 
-// TODO: swap in the real Stripe Payment Link when created.
-const STRIPE_DONATE_URL = '';
+const DONATE_URL = import.meta.env.VITE_DONATE_URL;
+const DONATE_ENABLED = typeof DONATE_URL === 'string' && DONATE_URL.length > 0;
 
 // Draft persistence key (spec §7). A lost email after an auth-wall round-trip
 // is a user who does not come back — even without auth, keeping the input
@@ -82,8 +82,8 @@ export default function WaitlistPanel() {
 
   function handleDonate() {
     logEvent('capacity_click', 'empty');
-    if (STRIPE_DONATE_URL) {
-      window.open(STRIPE_DONATE_URL, '_blank', 'noopener,noreferrer');
+    if (DONATE_ENABLED) {
+      window.open(DONATE_URL, '_blank', 'noopener,noreferrer');
     }
   }
 
@@ -130,13 +130,15 @@ export default function WaitlistPanel() {
             >
               {status === 'submitting' ? 'Joining…' : 'Notify me'}
             </button>
-            <button
-              type="button"
-              onClick={handleDonate}
-              className="px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
-            >
-              Chip in
-            </button>
+            {DONATE_ENABLED && (
+              <button
+                type="button"
+                onClick={handleDonate}
+                className="px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+              >
+                Chip in
+              </button>
+            )}
           </div>
           {status === 'error' && errorMsg && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errorMsg}</p>
