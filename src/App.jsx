@@ -1,15 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import InputPanel from './components/InputPanel.jsx';
 import OutputPanel from './components/OutputPanel.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobSearchPanel from './components/JobSearchPanel.jsx';
 import WaitlistPanel from './components/WaitlistPanel.jsx';
-import CapacityIndicator from './components/CapacityIndicator.jsx';
 import { getTheme, saveTheme, getMasterCV } from './lib/storage.js';
 import { generateApplication } from './lib/claude.js';
 import { getProfile, profileForGeneration } from './lib/profile.js';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase.js';
 import { fetchCapacityBand, setEmptyFromProxy } from './lib/capacity.js';
+
+// Shared <funding-status> pill (modules/funding-status). Head Hunter keeps
+// its own capacity polling (App needs the band to gate WaitlistPanel and to
+// react to 503 NO_CAPACITY) and passes it in via the `band` attribute; the
+// Supabase URL/key are passed only so the pill can log analytics.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const DONATE_URL = import.meta.env.VITE_DONATE_URL;
+
+// Map App's three-value capacity state onto the element's band attribute.
+function bandAttr(capacity) {
+  if (capacity === undefined) return 'loading';
+  if (capacity === null) return 'unknown';
+  return capacity.band;
+}
+
+// Empty state renders WaitlistPanel; "Notify me" on the pill jumps to it.
+function focusWaitlistInput() {
+  const el = document.getElementById('waitlist-email');
+  if (el instanceof HTMLInputElement) {
+    el.focus();
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
 
 export default function App() {
   const [theme, setTheme] = useState(getTheme());
@@ -28,6 +51,14 @@ export default function App() {
   // Do NOT collapse null and undefined — the banner would flash unknown
   // copy on every page load.
   const [capacity, setCapacity] = useState(undefined);
+  const fundingStatusRef = useRef(null);
+
+  useEffect(() => {
+    const node = fundingStatusRef.current;
+    if (!node) return;
+    node.addEventListener('funding-status:notify', focusWaitlistInput);
+    return () => node.removeEventListener('funding-status:notify', focusWaitlistInput);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -98,10 +129,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-900 dark:text-slate-100">
-      <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+      <header className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h1 className="text-lg font-semibold shrink-0">CV Toolkit</h1>
-        <div className="flex-1 flex justify-center min-w-0">
-          <CapacityIndicator capacity={capacity} />
+        {/* Own row on phones so the credit meter never overlaps the title/controls. */}
+        <div className="order-last w-full flex justify-center min-w-0 sm:order-none sm:w-auto sm:flex-1">
+          <funding-status
+            ref={fundingStatusRef}
+            band={bandAttr(capacity)}
+            theme={theme}
+            project="head-hunter"
+            supabase-url={SUPABASE_URL}
+            anon-key={SUPABASE_ANON_KEY}
+            donate-url={DONATE_URL}
+            empty-text="Out — tailoring paused"
+            thanks-text="Thank you — that keeps Head Hunter running."
+          />
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button

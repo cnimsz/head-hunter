@@ -47,5 +47,14 @@ export default [
       ]
     }
   },
+  {
+    // Framework-free, copy-in modules (browser + fetch-capable server runtimes).
+    files: ['modules/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...globals.browser }
+    }
+  },
   prettier
 ];

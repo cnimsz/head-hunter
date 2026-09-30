@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import CapacityPreview from './routes/CapacityPreview.jsx';
 import './index.css';
+// Registers the <funding-status> custom element (shared, framework-free module).
+import '../modules/funding-status/funding-status.js';
 
 // Minimal pathname-based preview route (no router library). Vercel Preview
 // builds run in production mode, so import.meta.env.DEV is false there —
