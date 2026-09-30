@@ -300,6 +300,7 @@ Always run `/test-pipeline` after:
 - **Raw JSON flashing** in the UI before rendering. Always wait for full response before rendering — `cvDataToText()` and `clDataToText()` expect complete data.
 - **CV too long (3+ pages)** happens when prompts don't enforce 2-page max + 4 bullets per role. The prompt templates have this — don't weaken it.
 - **CORS errors** on first deploy usually mean the edge function isn't setting `Access-Control-Allow-Origin` correctly. Match the response headers to the Vercel production domain.
+- **`revoke ... from public` does NOT lock down a Supabase function.** Supabase's default privileges grant EXECUTE on new `public`-schema functions directly to `anon` and `authenticated`, so internal `SECURITY DEFINER` RPCs must `revoke execute ... from anon, authenticated` explicitly (see `20260930105415_lock_down_internal_rpcs.sql`). Only `get_capacity_band()` is meant to be public. Re-run the Supabase security advisor after adding any function.
 - **Windows paths break** if Claude Code operates on OneDrive-synced files mid-sync. If you hit weird "file not found" errors, check OneDrive status.
 
 ## When Claude Should Ask vs. Act
