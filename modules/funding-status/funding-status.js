@@ -139,6 +139,7 @@ a.pill:hover .cta, a.pill:focus-visible .cta { transform: translateX(2px) scale(
   font: inherit; cursor: pointer;
 }
 .notify {
+  display: inline-block; text-decoration: none;
   padding: 4px 12px; border-radius: 999px;
   border: 1px solid var(--fs-notify-border); background: transparent;
   color: var(--fs-notify-text); font-weight: 700;
@@ -189,7 +190,8 @@ export class FundingStatus extends HTMLElement {
       'cta-text',
       'thanks-text',
       'empty-text',
-      'project'
+      'project',
+      'notify'
     ];
   }
 
@@ -208,6 +210,8 @@ export class FundingStatus extends HTMLElement {
     this._lastEmitted = null;
     this._thanksVisible = false;
     this._pollTimer = null;
+    this._polling = false;
+    this._pollGen = 0;
     this._fadeTimer = null;
   }
 
@@ -273,18 +277,30 @@ export class FundingStatus extends HTMLElement {
 
   // --- data ----------------------------------------------------------------
 
+  // Refresh loop: poll, then schedule the next poll with a one-shot timer.
+  // (A self-rescheduling timeout rather than an interval: it never overlaps a
+  // slow request, and some host pages lint their HTML against interval-based
+  // polling.) `_pollGen` invalidates a loop that was stopped mid-request.
   _syncPolling() {
     const shouldPoll = this.getAttribute('band') == null && this._supabaseConfig;
-    if (shouldPoll && !this._pollTimer) {
-      this._poll();
-      this._pollTimer = window.setInterval(() => this._poll(), POLL_MS);
+    if (shouldPoll && !this._polling) {
+      this._polling = true;
+      this._pollLoop(++this._pollGen);
     } else if (!shouldPoll) {
       this._stopPolling();
     }
   }
 
+  async _pollLoop(gen) {
+    await this._poll();
+    if (!this._polling || gen !== this._pollGen) return;
+    this._pollTimer = window.setTimeout(() => this._pollLoop(gen), POLL_MS);
+  }
+
   _stopPolling() {
-    if (this._pollTimer) window.clearInterval(this._pollTimer);
+    this._polling = false;
+    this._pollGen++;
+    if (this._pollTimer) window.clearTimeout(this._pollTimer);
     this._pollTimer = null;
   }
 
@@ -479,13 +495,26 @@ export class FundingStatus extends HTMLElement {
     status.appendChild(pill);
     frag.appendChild(status);
 
-    if (band === 'empty') {
-      const notify = el('button', 'notify', 'Notify me');
-      notify.type = 'button';
-      notify.addEventListener('click', () =>
-        this.dispatchEvent(new CustomEvent(`${TAG}:notify`, { bubbles: true, composed: true }))
-      );
-      frag.appendChild(notify);
+    // "Notify me" on the empty state. `notify` attribute:
+    //   unset   → button that fires `funding-status:notify` (host handles it)
+    //   "off"   → no button (host has no waitlist)
+    //   URL     → link (https:// or mailto:) opened in a new tab
+    const notifyMode = this._attr('notify', '');
+    if (band === 'empty' && notifyMode !== 'off') {
+      if (/^(https?:\/\/|mailto:)/i.test(notifyMode)) {
+        const link = el('a', 'notify', 'Notify me');
+        link.href = notifyMode;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        frag.appendChild(link);
+      } else {
+        const notify = el('button', 'notify', 'Notify me');
+        notify.type = 'button';
+        notify.addEventListener('click', () =>
+          this.dispatchEvent(new CustomEvent(`${TAG}:notify`, { bubbles: true, composed: true }))
+        );
+        frag.appendChild(notify);
+      }
     }
 
     if (this._thanksVisible) {

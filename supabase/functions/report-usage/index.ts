@@ -13,7 +13,8 @@
 // the others. Rows land as session_key = "project:<name>", operation =
 // "external".
 //
-// Body: { model: string, usage: <Anthropic `usage` object, verbatim> }
+// Body: { model: string, usage: <Anthropic `usage` object, verbatim>,
+//         batch?: boolean }   // true for Message Batches API results (50% tokens)
 // Responses: 204 recorded · 400 bad body/unknown model · 401 bad key ·
 //            405 · 413 too large · 429 rate limited or daily $ cap reached ·
 //            502 ledger write failed (caller may retry).
@@ -178,7 +179,7 @@ serve(async (req) => {
     return jsonError(413, "Body too large");
   }
 
-  let body: { model?: unknown; usage?: unknown };
+  let body: { model?: unknown; usage?: unknown; batch?: unknown };
   try {
     body = JSON.parse(text);
   } catch {
@@ -197,8 +198,9 @@ serve(async (req) => {
   const usage = sanitizeUsage(body.usage);
   if (!usage) return jsonError(400, "Invalid usage object");
 
+  const batch = body.batch === true;
   const sessionKey = `project:${project}`;
-  const thisCall = computeCostUsd(model, usage).cost_usd;
+  const thisCall = computeCostUsd(model, usage, { batch }).cost_usd;
   if ((await spentTodayUsd(sessionKey)) + thisCall > DAILY_CAP_USD) {
     console.error(`[report-usage] ${project} hit daily cap $${DAILY_CAP_USD}`);
     return jsonError(429, "Daily reporting cap reached for this project");
@@ -209,6 +211,7 @@ serve(async (req) => {
     operation: "external",
     model,
     usage,
+    batch,
   });
   // Unlike the proxies (where the Anthropic call already happened and cost
   // capture is best-effort), recording IS this endpoint's job — tell the

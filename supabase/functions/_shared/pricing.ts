@@ -36,7 +36,46 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     cache_read:  0.50 / 1_000_000,
     cache_write: 6.25 / 1_000_000,
   },
+  // --- Models used by OTHER projects on the shared account (report-usage) ---
+  // Haiku 4.5 alias — same rates as the dated id above.
+  "claude-haiku-4-5": {
+    input:       1.00 / 1_000_000,
+    output:      5.00 / 1_000_000,
+    cache_read:  0.10 / 1_000_000,
+    cache_write: 1.25 / 1_000_000,
+  },
+  // Sonnet 5 — $2 / $10 per Mtok (Fantasy-football-reporter writer tier)
+  "claude-sonnet-5": {
+    input:       2.00 / 1_000_000,
+    output:     10.00 / 1_000_000,
+    cache_read:  0.20 / 1_000_000,
+    cache_write: 2.50 / 1_000_000,
+  },
+  // Sonnet 5.5 — $2 / $10 per Mtok, cache reads $0.20
+  "claude-sonnet-5-5": {
+    input:       2.00 / 1_000_000,
+    output:     10.00 / 1_000_000,
+    cache_read:  0.20 / 1_000_000,
+    cache_write: 2.50 / 1_000_000,
+  },
+  // Opus 5 — $5 / $25 per Mtok
+  "claude-opus-5": {
+    input:       5.00 / 1_000_000,
+    output:     25.00 / 1_000_000,
+    cache_read:  0.50 / 1_000_000,
+    cache_write: 6.25 / 1_000_000,
+  },
+  // Opus 5.5 — $4 / $20 per Mtok, cache reads $0.20 (0.05× input, not 0.1×)
+  "claude-opus-5-5": {
+    input:       4.00 / 1_000_000,
+    output:     20.00 / 1_000_000,
+    cache_read:  0.20 / 1_000_000,
+    cache_write: 5.00 / 1_000_000,
+  },
 };
+
+// Message Batches API bills tokens at 50%. Web searches stay at list price.
+export const BATCH_TOKEN_MULTIPLIER = 0.5;
 
 // Anthropic web_search: $10 per 1000 searches, flat. Not a token cost.
 // The most likely-to-miss line item — omitting it makes est_cost_usd
@@ -60,7 +99,11 @@ export interface ComputedUsage {
   cost_usd: number;
 }
 
-export function computeCostUsd(model: string, usage: RawUsage | undefined | null): ComputedUsage {
+export function computeCostUsd(
+  model: string,
+  usage: RawUsage | undefined | null,
+  opts: { batch?: boolean } = {},
+): ComputedUsage {
   const u = usage ?? {};
   const input_tokens        = u.input_tokens ?? 0;
   const output_tokens       = u.output_tokens ?? 0;
@@ -76,12 +119,14 @@ export function computeCostUsd(model: string, usage: RawUsage | undefined | null
     return { input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, web_searches, cost_usd: 0 };
   }
 
-  const cost_usd =
+  const tokenCost =
       input_tokens       * p.input
     + output_tokens      * p.output
     + cache_read_tokens  * p.cache_read
-    + cache_write_tokens * p.cache_write
-    + web_searches       * WEB_SEARCH_COST_USD;
+    + cache_write_tokens * p.cache_write;
+  const cost_usd =
+      tokenCost * (opts.batch ? BATCH_TOKEN_MULTIPLIER : 1)
+    + web_searches * WEB_SEARCH_COST_USD;
 
   return { input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, web_searches, cost_usd };
 }

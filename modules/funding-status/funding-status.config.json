@@ -1,0 +1,17 @@
+{
+  "donateUrl": "https://donate.stripe.com/REPLACE_WITH_THIS_PROJECTS_PAYMENT_LINK",
+
+  "project": "",
+  "tagline": "Free — funded by your donations",
+  "ctaText": "CLICK ME",
+  "emptyText": "Out — paused",
+  "thanksText": "Thank you — your donation keeps this running.",
+  "notify": "off",
+  "theme": "auto",
+
+  "htmlFiles": [],
+  "serverHelperDir": "",
+
+  "supabaseUrl": "https://bcenuebydpkyfmtzfcku.supabase.co",
+  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjZW51ZWJ5ZHBreWZtdHpmY2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTA2NzMsImV4cCI6MjA5NTgyNjY3M30.zGWVt0kjzSk7joqv_-QhXqI21cw-ZxKYjB8B2IjCBQE"
+}

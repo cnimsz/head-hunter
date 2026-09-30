@@ -94,7 +94,10 @@ head-hunter/
 ├── modules/
 │   └── funding-status/                 ← Reusable, framework-free credits pill (copy into other projects)
 │       ├── funding-status.js           ← <funding-status> Web Component (Shadow DOM, no deps)
-│       ├── report-usage.js             ← Server helper: other projects report Anthropic spend
+│       ├── report-usage.js (+ .d.ts)   ← Server helper: other projects report Anthropic spend
+│       ├── install.mjs                 ← Drop-in installer (inlines pill into a page, copies helper)
+│       ├── funding-status.config.json  ← Per-project settings — only donateUrl needs changing
+│       ├── INSTALL.md                  ← Step-by-step for adding to another project
 │       └── README.md                   ← Setup for other projects
 ├── supabase/
 │   ├── config.toml
