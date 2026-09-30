@@ -35,17 +35,20 @@ export function userSessionKey(userId: string): string {
 }
 
 // Operation values recognised by usage_counters.operation (per Phase 0
-// addendum migration 20260908000000). Adding a value requires updating the
-// check constraint in that migration and any daily-cap query that filters
+// addendum migration 20260908000000; 'external' added in 20260930000000 for
+// spend reported by other projects via report-usage). Adding a value requires
+// updating the check constraint and any daily-cap query that filters
 // on operation.
-export type Operation = "tailoring" | "gap_analysis" | "jobsearch" | "research";
+export type Operation = "tailoring" | "gap_analysis" | "jobsearch" | "research" | "external";
 
 // Record one Anthropic call's cost into usage_counters. Session_key is
 // opaque text — pass whatever attribution identifier the caller has.
 // Operation is required — it discriminates billable-and-capped ('tailoring')
 // from billable-only ('gap_analysis' / 'jobsearch' / 'research') and is used
 // by checkDailyCap to filter the tailoring quota.
-// Never throws. Never blocks. isTailoringStart increments the tailorings
+// Never throws. Never blocks. Resolves true when the row was written, false
+// on any failure — proxy callers ignore it (fail-open); report-usage uses it
+// to answer 5xx so the reporting project knows. isTailoringStart increments the tailorings
 // count on the row — only pass true from head-hunter-claude on a new
 // tailoring pipeline; every other caller passes false or omits it.
 export async function recordAnthropicUsage(opts: {
@@ -54,7 +57,7 @@ export async function recordAnthropicUsage(opts: {
   model:               string;
   usage:               RawUsage | undefined | null;
   is_tailoring_start?: boolean;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     const { session_key, operation, model, usage } = opts;
     const isTailoringStart = opts.is_tailoring_start === true;
@@ -71,8 +74,13 @@ export async function recordAnthropicUsage(opts: {
       p_cost_usd:           c.cost_usd,
       p_is_tailoring_start: isTailoringStart,
     });
-    if (error) console.error("[cost] record_usage failed:", error);
+    if (error) {
+      console.error("[cost] record_usage failed:", error);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.error("[cost] recordAnthropicUsage threw:", e);
+    return false;
   }
 }

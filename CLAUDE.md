@@ -91,12 +91,18 @@ head-hunter/
 │       ├── master-cv.js                ← Multi-CV synthesis prompt
 │       ├── feedback.js                 ← Diff analysis → style rules prompt
 │       └── gap-analysis.js             ← Gap-analysis prompt (→ structured findings)
+├── modules/
+│   └── funding-status/                 ← Reusable, framework-free credits pill (copy into other projects)
+│       ├── funding-status.js           ← <funding-status> Web Component (Shadow DOM, no deps)
+│       ├── report-usage.js             ← Server helper: other projects report Anthropic spend
+│       └── README.md                   ← Setup for other projects
 ├── supabase/
 │   ├── config.toml
 │   ├── functions/
 │   │   ├── head-hunter-claude/         ← Public generation proxy (Turnstile + session)
 │   │   ├── gap-analysis/               ← Auth-gated; persists runs + findings (RLS)
-│   │   └── jobsearch/                  ← Auth-gated; JSearch + candidate pool + signals
+│   │   ├── jobsearch/                  ← Auth-gated; JSearch + candidate pool + signals
+│   │   └── report-usage/               ← Server-to-server; other projects' spend → shared ledger
 │   └── migrations/                     ← SQL for gap_analysis_* and jobsearch_* tables
 ├── skills/                             ← Reference skill docs (not used at runtime)
 │   ├── CV_FORMAT_SPEC.md
@@ -186,6 +192,8 @@ Cost: ~$0.05–$0.10 per research call at Haiku 4.5 pricing (was $0.30+ on Sonne
 
 **Auth-gated features (Gap Analysis + Find Roles):** Opened from the main app via `AuthGate`, a magic-link sign-in wrapper backed by Supabase Auth. Public surfaces stay unauthenticated — only these two features require a user session, because both persist per-user state (gap findings; jobsearch candidates + feedback signals) under RLS in Postgres. Each panel has its own dedicated edge function (`gap-analysis`, `jobsearch`) with its own rate limit and its own model budget.
 
+**Funding status pill (shared across projects):** the header credits pill is `modules/funding-status/funding-status.js`, a framework-free Web Component registered in `src/main.jsx` and rendered in `App.jsx` in host-controlled mode (`band={…}` from `src/lib/capacity.js`, which App also uses to gate `WaitlistPanel` and to react to 503 NO_CAPACITY). Other projects (e.g. Fantasy-football-reporter) copy the file in and let it poll `get_capacity_band()` on this Supabase project themselves: **one shared credit pool**. To keep that pool honest, their backends report each Anthropic call to the `report-usage` edge function (`x-project-key` auth against `USAGE_REPORT_KEYS`; rows land as `session_key='project:<name>'`, `operation='external'`). This folder is the source of truth; recopy into other projects after changing it. Preview every state at `/capacity-preview` (needs `VITE_ENABLE_PREVIEW_ROUTES=true`).
+
 **Visual templates:** DOCX generation goes through `src/lib/docx.js`, which dispatches to one of three template modules under `src/lib/templates/` (Classic/Modern/Executive). Each module exports `renderCV(data)` and `renderCL(data)` returning `{ styles, numbering, sections }`. Tokens (fonts, sizes, colors, margins) live in `tokens.js`. User's template choice persists in localStorage at `cv-toolkit:template`.
 
 ## DOCX Formatting
@@ -227,6 +235,8 @@ Error handling: 401 → bot challenge failed or session expired/invalid, 413 →
 | `ANTHROPIC_API_KEY` | Supabase secret | Anthropic API key (renamed from `HEAD_HUNTER` on 2026-06-01 after a rotation) |
 | `TURNSTILE_SECRET_KEY` | Supabase secret | Cloudflare Turnstile secret. Test value: `1x0000000000000000000000000000000AA` (always passes) |
 | `HEAD_HUNTER_SESSION_SECRET` | Supabase secret | HMAC key for session tokens. Generate: `openssl rand -hex 32` |
+| `USAGE_REPORT_KEYS` | Supabase secret | `report-usage` auth: `project-name:secret,…` (one ≥16-char secret per outside project; remove an entry to revoke) |
+| `USAGE_REPORT_DAILY_CAP_USD` | Supabase secret (optional) | Per-project daily ceiling on spend reported via `report-usage` (default `25`) |
 | `VITE_TURNSTILE_SITE_KEY` | `.env.local` (dev) + Vercel env (prod) | Cloudflare Turnstile site key. Public by design — embedded in client bundle. Test value: `1x00000000000000000000AA` (always passes) |
 
 Rotate the session secret: set a new `HEAD_HUNTER_SESSION_SECRET` in Supabase. Sessions in flight invalidate immediately; no client redeploy needed. The site key only needs rotation if the Cloudflare Turnstile site is replaced.

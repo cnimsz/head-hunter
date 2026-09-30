@@ -399,6 +399,12 @@ verify_jwt = false
 [functions.jobsearch]
 verify_jwt = false
 
+# Server-to-server: other projects sharing the Anthropic account report spend
+# here. Auth is a per-project secret in the `x-project-key` header, checked
+# inside the function against the USAGE_REPORT_KEYS secret — not a JWT.
+[functions.report-usage]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
