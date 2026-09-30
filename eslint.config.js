@@ -56,5 +56,14 @@ export default [
       globals: { ...globals.browser }
     }
   },
+  {
+    // Node CLI scripts inside the copy-in modules (e.g. the installer).
+    files: ['modules/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...globals.node }
+    }
+  },
   prettier
 ];

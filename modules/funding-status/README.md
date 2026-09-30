@@ -1,5 +1,9 @@
 # funding-status
 
+> **Adding this to another project? Follow [INSTALL.md](INSTALL.md).** Copy this folder in, set the
+> Stripe link in `funding-status.config.json`, and run `node funding-status/install.mjs`.
+> The rest of this file is the reference for the component and the server helper.
+
 A drop-in "credits" pill for any web project that draws on the shared
 Anthropic account:
 
@@ -21,7 +25,8 @@ Anthropic account:
 | File | Runs in | Purpose |
 |---|---|---|
 | `funding-status.js` | browser | the `<funding-status>` element |
-| `report-usage.js` | your server (Worker / Node / Deno) | reports your Anthropic spend into the shared pool |
+| `report-usage.js` (+ `.d.ts`) | your server (Worker / Node / Deno) | reports your Anthropic spend into the shared pool; pass `batch: true` for Batch API results |
+| `install.mjs` + `funding-status.config.json` | your machine, once | drop-in installer (see INSTALL.md) |
 
 ---
 
@@ -108,6 +113,7 @@ Add a new model there before you switch to it.
 | `project` | Tags analytics events (`prompt_events.project`) | `unknown` |
 | `band` | Host-controlled mode: `green` / `amber` / `red` / `empty` / `unknown` / `loading`. When set, the element does **not** fetch | unset |
 | `theme` | `light`, `dark`, or `auto` (follows the OS) | `auto` |
+| `notify` | Empty-state "Notify me": unset fires `funding-status:notify`; `off` hides it; an `https://` or `mailto:` URL makes it a link | unset |
 
 It polls every 5 minutes. If a poll fails it keeps the last known band and
 never shows a false "empty".

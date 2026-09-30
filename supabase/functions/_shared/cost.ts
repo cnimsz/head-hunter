@@ -57,11 +57,13 @@ export async function recordAnthropicUsage(opts: {
   model:               string;
   usage:               RawUsage | undefined | null;
   is_tailoring_start?: boolean;
+  // Message Batches API call — tokens bill at 50% (report-usage only).
+  batch?:              boolean;
 }): Promise<boolean> {
   try {
     const { session_key, operation, model, usage } = opts;
     const isTailoringStart = opts.is_tailoring_start === true;
-    const c = computeCostUsd(model, usage);
+    const c = computeCostUsd(model, usage, { batch: opts.batch === true });
     const supa = getServiceClient();
     const { error } = await supa.rpc("record_usage", {
       p_session_key:        session_key,
