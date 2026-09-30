@@ -35,7 +35,7 @@ export function userSessionKey(userId: string): string {
 }
 
 // Operation values recognised by usage_counters.operation (per Phase 0
-// addendum migration 20260908000000; 'external' added in 20260930120000 for
+// addendum migration 20260908000000; 'external' added in 20260930110203 for
 // spend reported by other projects via report-usage). Adding a value requires
 // updating the check constraint and any daily-cap query that filters
 // on operation.
