@@ -15,10 +15,11 @@
 //
 // Body: { model: string, usage: <Anthropic `usage` object, verbatim> }
 // Responses: 204 recorded · 400 bad body/unknown model · 401 bad key ·
-//            405 · 413 too large · 429 rate limited.
+//            405 · 413 too large · 429 rate limited or daily $ cap reached ·
+//            502 ledger write failed (caller may retry).
 //
-// Cost capture reuses recordAnthropicUsage (fail-open: a DB error is logged,
-// never surfaced) and the single MODEL_PRICING source of truth.
+// Cost capture reuses recordAnthropicUsage and the single MODEL_PRICING
+// source of truth.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient, recordAnthropicUsage } from "../_shared/cost.ts";
