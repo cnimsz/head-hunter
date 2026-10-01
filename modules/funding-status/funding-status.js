@@ -15,7 +15,7 @@ const FADE_MS = 120;
 
 const DEFAULTS = {
   tagline: 'Free — kept running by supporters',
-  ctaText: 'Support',
+  ctaText: 'Support Us',
   emptyText: 'Out — paused',
   project: 'unknown'
 };

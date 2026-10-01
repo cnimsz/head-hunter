@@ -141,7 +141,6 @@ export default function App() {
             supabase-url={SUPABASE_URL}
             anon-key={SUPABASE_ANON_KEY}
             support-url={SUPPORT_URL}
-            cta-text="Buy me a coffee"
             empty-text="Out — tailoring paused"
           />
         </div>

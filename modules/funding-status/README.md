@@ -5,7 +5,7 @@ Anthropic account:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ Credits ▮▮▮ Plenty                          SUPPORT  │  ← whole pill links
+│ Credits ▮▮▮ Plenty                       SUPPORT US  │  ← whole pill links
 │ Free — kept running by supporters                    │    to your support page
 └──────────────────────────────────────────────────────┘
 ```
@@ -102,7 +102,7 @@ Add a new model there before you switch to it.
 | `supabase-url`, `anon-key` | Where to read the shared band and log analytics | none (no fetch → "Status unavailable") |
 | `support-url` | Any support page, e.g. Ko-fi (`http(s)` only). The whole pill becomes the link (new tab, `rel="noopener noreferrer"`) and shows the CTA badge | unset = plain pill, no link |
 | `tagline` | Second line | `Free — kept running by supporters` |
-| `cta-text` | Badge on the right (only shown when `support-url` is set) | `Support` |
+| `cta-text` | Badge on the right (only shown when `support-url` is set) | `Support Us` |
 | `empty-text` | Stage label when credits are out | `Out — paused` |
 | `project` | Tags analytics events (`prompt_events.project`) | `unknown` |
 | `band` | Host-controlled mode: `green` / `amber` / `red` / `empty` / `unknown` / `loading`. When set, the element does **not** fetch | unset |
