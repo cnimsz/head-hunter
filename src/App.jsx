@@ -16,7 +16,7 @@ import { fetchCapacityBand, setEmptyFromProxy } from './lib/capacity.js';
 // Supabase URL/key are passed only so the pill can log analytics.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const DONATE_URL = import.meta.env.VITE_DONATE_URL;
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || 'https://ko-fi.com/cvtool';
 
 // Map App's three-value capacity state onto the element's band attribute.
 function bandAttr(capacity) {
@@ -140,9 +140,8 @@ export default function App() {
             project="head-hunter"
             supabase-url={SUPABASE_URL}
             anon-key={SUPABASE_ANON_KEY}
-            donate-url={DONATE_URL}
+            support-url={SUPPORT_URL}
             empty-text="Out — tailoring paused"
-            thanks-text="Thank you — that keeps Head Hunter running."
           />
         </div>
         <div className="flex items-center gap-2 shrink-0">

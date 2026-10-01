@@ -1,8 +1,8 @@
 // <funding-status> — a drop-in, framework-free credits pill.
 //
 // Shows a coarse 3-stage credit meter (Plenty / Getting low / Very low-or-out)
-// plus a tagline, and — when a donate URL is set — turns the whole pill into
-// a link to the donation page. One plain ES module, no dependencies, no build
+// plus a tagline, and — when a support URL is set (e.g. a Ko-fi page) — turns
+// the whole pill into a link to it. One plain ES module, no dependencies, no build
 // step; styles live in a Shadow DOM so they never collide with the host page.
 //
 // All projects read the SAME shared credit pool: the get_capacity_band() RPC
@@ -14,9 +14,8 @@ const POLL_MS = 5 * 60 * 1000;
 const FADE_MS = 120;
 
 const DEFAULTS = {
-  tagline: 'Free — funded by your donations',
-  ctaText: 'CLICK ME',
-  thanksText: 'Thank you — your donation keeps this running.',
+  tagline: 'Free — kept running by supporters',
+  ctaText: 'Support Us',
   emptyText: 'Out — paused',
   project: 'unknown'
 };
@@ -135,7 +134,7 @@ a.pill:focus-visible { outline: 2px solid var(--fs-focus); outline-offset: 2px; 
 }
 a.pill:hover .cta, a.pill:focus-visible .cta { transform: translateX(2px) scale(1.05); }
 
-.notify, .thanks button {
+.notify {
   font: inherit; cursor: pointer;
 }
 .notify {
@@ -144,15 +143,7 @@ a.pill:hover .cta, a.pill:focus-visible .cta { transform: translateX(2px) scale(
   color: var(--fs-notify-text); font-weight: 700;
 }
 .notify:hover { background: var(--fs-notify-hover); }
-.notify:focus-visible, .thanks button:focus-visible { outline: 2px solid var(--fs-focus); outline-offset: 2px; }
-
-.thanks {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 4px 12px; border-radius: 999px; white-space: nowrap; font-weight: 500;
-  border: 1px solid #34d399; background: #ecfdf5; color: #065f46;
-}
-.thanks button { border: 0; background: transparent; color: inherit; opacity: .7; padding: 0 4px; }
-.thanks button:hover { opacity: 1; }
+.notify:focus-visible { outline: 2px solid var(--fs-focus); outline-offset: 2px; }
 
 .sr {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -184,10 +175,9 @@ export class FundingStatus extends HTMLElement {
       'band',
       'supabase-url',
       'anon-key',
-      'donate-url',
+      'support-url',
       'tagline',
       'cta-text',
-      'thanks-text',
       'empty-text',
       'project'
     ];
@@ -206,13 +196,11 @@ export class FundingStatus extends HTMLElement {
     this._fetchSettled = false; // at least one poll finished (ok or not)
     this._shownBand = null; // band currently painted (lags during fade)
     this._lastEmitted = null;
-    this._thanksVisible = false;
     this._pollTimer = null;
     this._fadeTimer = null;
   }
 
   connectedCallback() {
-    this._consumeDonationReturn();
     this._shownBand = this._effectiveBand();
     this._render();
     this._afterBandSettled();
@@ -241,8 +229,8 @@ export class FundingStatus extends HTMLElement {
     return v == null || v === '' ? fallback : v;
   }
 
-  get _donateUrl() {
-    const url = this._attr('donate-url', '');
+  get _supportUrl() {
+    const url = this._attr('support-url', '');
     // Only http(s) links — never render a javascript: or other scheme href.
     return /^https?:\/\//i.test(url) ? url : '';
   }
@@ -363,25 +351,6 @@ export class FundingStatus extends HTMLElement {
     this._logEvent('capacity_impression', band);
   }
 
-  // Donation return: ?donated=1 → show a dismissible thank-you and strip the
-  // param so a refresh doesn't re-fire it. First instance on the page wins.
-  _consumeDonationReturn() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('donated') !== '1') return;
-      this._thanksVisible = true;
-      params.delete('donated');
-      const qs = params.toString();
-      window.history.replaceState(
-        window.history.state,
-        '',
-        window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash
-      );
-    } catch {
-      // URL/history APIs unavailable — skip the notice.
-    }
-  }
-
   // --- band transitions ----------------------------------------------------
 
   _onBandMaybeChanged() {
@@ -428,7 +397,7 @@ export class FundingStatus extends HTMLElement {
     const tagline = this._attr('tagline', DEFAULTS.tagline);
     const ctaText = this._attr('cta-text', DEFAULTS.ctaText);
     const stage = stageFor(band, this._attr('empty-text', DEFAULTS.emptyText));
-    const donateUrl = this._donateUrl;
+    const supportUrl = this._supportUrl;
 
     const frag = document.createDocumentFragment();
 
@@ -436,18 +405,18 @@ export class FundingStatus extends HTMLElement {
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
-    // The whole pill is the Donate link when a URL is configured. Without
+    // The whole pill is the support link when a URL is configured. Without
     // one it's a plain status pill — never a dead link.
-    const pill = el(donateUrl ? 'a' : 'div', 'pill');
+    const pill = el(supportUrl ? 'a' : 'div', 'pill');
     pill.dataset.band = band;
     pill.setAttribute('part', 'pill');
-    if (donateUrl) {
-      pill.href = donateUrl;
+    if (supportUrl) {
+      pill.href = supportUrl;
       pill.target = '_blank';
       pill.rel = 'noopener noreferrer';
       pill.setAttribute(
         'aria-label',
-        `Credits: ${stage.label}. ${tagline}. ${ctaText} to donate (opens in a new tab)`
+        `Credits: ${stage.label}. ${tagline}. ${ctaText} (opens in a new tab)`
       );
       pill.addEventListener('click', () => this._logEvent('capacity_click', band));
     }
@@ -470,7 +439,7 @@ export class FundingStatus extends HTMLElement {
       lines.appendChild(el('span', 'l2', tagline));
       pill.appendChild(lines);
 
-      if (donateUrl) {
+      if (supportUrl) {
         const cta = el('span', 'cta', ctaText);
         cta.setAttribute('aria-hidden', 'true');
         pill.appendChild(cta);
@@ -486,21 +455,6 @@ export class FundingStatus extends HTMLElement {
         this.dispatchEvent(new CustomEvent(`${TAG}:notify`, { bubbles: true, composed: true }))
       );
       frag.appendChild(notify);
-    }
-
-    if (this._thanksVisible) {
-      const thanks = el('div', 'thanks');
-      thanks.setAttribute('role', 'status');
-      thanks.appendChild(el('span', null, this._attr('thanks-text', DEFAULTS.thanksText)));
-      const close = el('button', null, '✕');
-      close.type = 'button';
-      close.setAttribute('aria-label', 'Dismiss thank-you');
-      close.addEventListener('click', () => {
-        this._thanksVisible = false;
-        this._render();
-      });
-      thanks.appendChild(close);
-      frag.appendChild(thanks);
     }
 
     this._container.replaceChildren(frag);

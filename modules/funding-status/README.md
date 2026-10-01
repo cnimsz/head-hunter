@@ -5,8 +5,8 @@ Anthropic account:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ Credits ▮▮▮ Plenty                         CLICK ME  │  ← whole pill links
-│ Free — funded by your donations                      │    to the donate page
+│ Credits ▮▮▮ Plenty                       SUPPORT US  │  ← whole pill links
+│ Free — kept running by supporters                    │    to your support page
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -43,7 +43,7 @@ Fantasy-football-reporter: `public/funding-status.js`).
   project="fantasy-football-reporter"
   supabase-url="https://bcenuebydpkyfmtzfcku.supabase.co"
   anon-key="<Head Hunter's Supabase anon key — public, same one Head Hunter ships>"
-  donate-url="https://buy.stripe.com/<payment-link>"
+  support-url="https://ko-fi.com/<your-page>"
   tagline="Weekly reports — kept free by readers like you"
   empty-text="Out — reports paused"
 ></funding-status>
@@ -100,11 +100,10 @@ Add a new model there before you switch to it.
 | Attribute | Purpose | Default |
 |---|---|---|
 | `supabase-url`, `anon-key` | Where to read the shared band and log analytics | none (no fetch → "Status unavailable") |
-| `donate-url` | Stripe Payment Link (`http(s)` only). The whole pill becomes the link and shows the CTA badge | unset = plain pill, no link |
-| `tagline` | Second line | `Free — funded by your donations` |
-| `cta-text` | Badge on the right (only shown when `donate-url` is set) | `CLICK ME` |
+| `support-url` | Any support page, e.g. Ko-fi (`http(s)` only). The whole pill becomes the link (new tab, `rel="noopener noreferrer"`) and shows the CTA badge | unset = plain pill, no link |
+| `tagline` | Second line | `Free — kept running by supporters` |
+| `cta-text` | Badge on the right (only shown when `support-url` is set) | `Support Us` |
 | `empty-text` | Stage label when credits are out | `Out — paused` |
-| `thanks-text` | Notice shown after a donation (`?donated=1`) | `Thank you — your donation keeps this running.` |
 | `project` | Tags analytics events (`prompt_events.project`) | `unknown` |
 | `band` | Host-controlled mode: `green` / `amber` / `red` / `empty` / `unknown` / `loading`. When set, the element does **not** fetch | unset |
 | `theme` | `light`, `dark`, or `auto` (follows the OS) | `auto` |
@@ -125,14 +124,6 @@ document.addEventListener('funding-status:change', (e) => {
 });
 ```
 
-### Donation return
-
-Set your Stripe Payment Link's **after-payment redirect** to
-`https://<your-site>/?donated=1`. The element shows a dismissible thank-you
-and removes the param from the URL. All projects can use the same Stripe
-account. Create **one Payment Link per project** so each one sends donors back
-to its own site.
-
 ### React hosts
 
 React 18 passes string props straight through as attributes. Use a ref for the events:
@@ -147,7 +138,7 @@ useEffect(() => {
   return () => node.removeEventListener('funding-status:notify', openWaitlist);
 }, []);
 
-<funding-status ref={ref} project="my-app" theme={theme} donate-url={DONATE_URL} … />
+<funding-status ref={ref} project="my-app" theme={theme} support-url={SUPPORT_URL} … />
 ```
 
 Head Hunter itself uses host-controlled mode (`band={…}`), because its app
@@ -169,8 +160,13 @@ This folder in the Head Hunter repo is the source of truth. After changing
 `funding-status.js` or `report-usage.js`, copy the files into each project that
 uses them again.
 
+**Breaking change (Ko-fi switch):** the `donate-url` attribute was renamed to
+`support-url`, and the `thanks-text` / `?donated=1` return notice was removed
+(Ko-fi has no after-payment redirect). Update the tag in each project when you
+recopy.
+
 ## Not automated yet
 
-Stripe donations don't add credit to the pool on their own. Top-ups are still
-rows inserted by hand into `credit_topups`. A Stripe webhook that inserts them
-is a planned follow-up.
+Ko-fi tips don't add credit to the pool on their own. Top-ups are still rows
+inserted by hand into `credit_topups`. A Ko-fi webhook (Settings → API) that
+inserts them is a planned follow-up.

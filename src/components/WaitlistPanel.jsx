@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase.js';
 import { logEvent } from '../lib/promptEvents.js';
 
-const DONATE_URL = import.meta.env.VITE_DONATE_URL;
-const DONATE_ENABLED = typeof DONATE_URL === 'string' && DONATE_URL.length > 0;
+const SUPPORT_URL = import.meta.env.VITE_SUPPORT_URL || 'https://ko-fi.com/cvtool';
 
 // Draft persistence key (spec §7). A lost email after an auth-wall round-trip
 // is a user who does not come back — even without auth, keeping the input
@@ -80,20 +79,13 @@ export default function WaitlistPanel() {
     }
   }
 
-  function handleDonate() {
-    logEvent('capacity_click', 'empty');
-    if (DONATE_ENABLED) {
-      window.open(DONATE_URL, '_blank', 'noopener,noreferrer');
-    }
-  }
-
   return (
     <div className="max-w-lg mx-auto mt-8 p-6 rounded-lg border border-slate-300 bg-slate-50 dark:bg-slate-800/40 dark:border-slate-700">
       <h2 className="text-lg font-semibold mb-2 text-slate-900 dark:text-slate-100">
         Out of credit for now
       </h2>
       <p className="text-sm text-slate-700 dark:text-slate-300 mb-4">
-        Awaiting on more donations to refill credits, will notify when refilled.
+        Credits ran out. They refill when people chip in — we'll email you when tailoring is back.
       </p>
 
       {status === 'joined' ? (
@@ -130,15 +122,15 @@ export default function WaitlistPanel() {
             >
               {status === 'submitting' ? 'Joining…' : 'Notify me'}
             </button>
-            {DONATE_ENABLED && (
-              <button
-                type="button"
-                onClick={handleDonate}
-                className="px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
-              >
-                Chip in
-              </button>
-            )}
+            <a
+              href={SUPPORT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => logEvent('capacity_click', 'empty')}
+              className="px-3 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+            >
+              Support Head Hunter
+            </a>
           </div>
           {status === 'error' && errorMsg && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errorMsg}</p>
